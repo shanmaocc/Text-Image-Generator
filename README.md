@@ -1,6 +1,6 @@
 # Text-Image-Generator
 
-一个强大的SillyTavern扩展，集成了AI提示词生成和ComfyUI图片生成功能。
+一个SillyTavern扩展，集成了AI提示词生成和ComfyUI图片生成功能。
 
 ## ✨ 功能特性
 
@@ -15,14 +15,32 @@
 
 ### 安装
 
-1. 将整个项目文件夹复制到SillyTavern的扩展目录：
+#### 方式一：SillyTavern 内置安装（推荐）
+
+1. 打开 SillyTavern
+2. 进入 **扩展设置** → **安装扩展**
+3. 在 **Git 仓库 URL** 中输入：
+   ```
+   https://github.com/shanmaocc/Text-Image-Generator.git
+   ```
+4. 点击 **安装**
+5. 安装完成后，在扩展列表中启用 **Text Image Generator**
+
+#### 方式二：手动安装
+
+1. 克隆仓库：
+   ```bash
+   git clone https://github.com/shanmaocc/Text-Image-Generator.git
+   ```
+
+2. 将整个项目文件夹复制到SillyTavern的扩展目录：
    ```
    SillyTavern/public/scripts/extensions/third-party/Text-Image-Generator/
    ```
 
-2. 重启SillyTavern
+3. 重启SillyTavern
 
-3. 在扩展设置中找到"Text Image Generator"并启用
+4. 在扩展设置中找到"Text Image Generator"并启用
 
 ### 配置
 

@@ -8,5 +8,8 @@
     "author": "shanmaocc",
     "version": "0.1.0",
     "homePage": "https://github.com/shanmaocc/Text-Image-Generator",
-    "auto_update": true
+    "auto_update": true,
+    "description": "AI提示词生成和ComfyUI图片生成功能集成",
+    "tags": ["ai", "image-generation", "comfyui", "prompt-generation"],
+    "min_sillytavern_version": "1.10.0"
 }

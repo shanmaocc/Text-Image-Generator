@@ -5,7 +5,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Build outputs
-dist/
+# dist/ - 注释掉，SillyTavern需要从Git仓库直接安装
 build/
 
 # Environment variables
