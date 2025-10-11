@@ -1,0 +1,12 @@
+{
+    "display_name": "Text Image Generator",
+    "loading_order": 15,
+    "requires": [],
+    "optional": [],
+    "js": "dist/index.js",
+    "css": "style.css",
+    "author": "shanmaocc",
+    "version": "0.1.0",
+    "homePage": "https://github.com/shanmaocc/Text-Image-Generator",
+    "auto_update": true
+}

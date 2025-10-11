@@ -1,0 +1,46 @@
+{
+  "name": "text-image-generator-extension",
+  "version": "0.1.0",
+  "description": "Text-Image-Generator extension for SillyTavern with Vite and TypeScript support",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:watch": "vite build --watch",
+    "preview": "vite preview",
+    "clean": "rimraf dist",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.{ts,js,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js,json}\"",
+    "build:extension": "node build.cjs"
+  },
+  "keywords": [
+    "sillytavern",
+    "extension",
+    "typescript",
+    "vite",
+    "audio",
+    "bgm"
+  ],
+  "author": "shanmaocc",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jquery": "^3.5.29",
+    "@types/node": "^20.10.0",
+    "@types/toastr": "^2.1.43",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.0",
+    "rimraf": "^5.0.5",
+    "typescript": "^6.0.0-dev.20250807",
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "fuse.js": "^7.0.0",
+    "loglevel": "^1.9.2"
+  }
+}

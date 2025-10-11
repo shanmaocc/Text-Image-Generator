@@ -1,0 +1,321 @@
+<div id="text-image-generator-extension-container">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>Text Image Generator</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+            <div class="tig-extension-status flex spaceBetween alignItemsCenter paddingLeftRight5">
+                <div class="flex alignItemsCenter">
+                    <i id="tig-extension-status-icon" class="fa-solid fa-image margin-r5"></i>
+                    <div id="tig-extension-status" class="inline-block">Text Image Generator</div>
+                </div>
+                <div id="tig-version" class="tig-version">v0.1.0</div>
+            </div>
+
+            <div id="extension-container" class="marginTop5 marginBot10">
+                <!-- 标签页切换 -->
+                <div class="flex alignItemsCenter gap10px" style="margin: 6px 0;">
+                    <div id="tig-tab-basic" class="test-button" style="padding:6px 10px;">基础</div>
+                    <div id="tig-tab-api" class="test-button" style="padding:6px 10px;">API 与模型</div>
+                </div>
+
+                <!-- 基础设置 Tab -->
+                <div id="tab-basic-content" class="tig-extension-content flex flexFlowColumn gap10px"
+                    style="display: block;">
+
+                    <div class="tig-extension-content-item">
+                        <div class="flex flexFlowColumn">
+                            <div class="settings-title-text">启用扩展</div>
+                            <div class="settings-title-description">扩展总开关</div>
+                        </div>
+                        <div class="simple-toggle">
+                            <input type="checkbox" id="extension-enable-toggle" />
+                            <label for="extension-enable-toggle"></label>
+                        </div>
+                    </div>
+
+
+                    <!-- 数据源设置 -->
+                    <div class="major-divider-container">
+                        <div class="major-divider-text"><i class="fa-solid fa-server margin-r5"></i>数据源</div>
+                        <div class="major-divider-line"></div>
+                    </div>
+
+                    <div class="tig-extension-content-item">
+                        <div class="flex flexFlowColumn">
+                            <div class="settings-title-text">数据源</div>
+                            <div class="settings-title-description">选择图片生成的数据源</div>
+                        </div>
+                        <select id="source-select" class="model-select">
+                            <option value="comfy">ComfyUI</option>
+                        </select>
+                    </div>
+
+                    <!-- ComfyUI 设置 -->
+                    <div id="comfy-source-settings" class="source-settings" style="display: none;">
+                        <div class="tig-extension-content-item">
+                            <div class="flex flexFlowColumn">
+                                <div class="settings-title-text">ComfyUI URL</div>
+                                <div class="settings-title-description">ComfyUI 服务器地址</div>
+                            </div>
+                            <div class="flex-container flex-start flexnowrap">
+                                <input id="comfy-url-input" type="text" class="api-input"
+                                    placeholder="例如: http://127.0.0.1:8188" value="http://127.0.0.1:8188" />
+                                <div id="comfy-validate-btn" class="test-button flex-center">
+                                    <i class="fa-solid fa-check"></i>
+                                    连接
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="tig-extension-content-item">
+                            <div class="flex flexFlowColumn">
+                                <div class="settings-title-text">ComfyUI 工作流</div>
+                                <div class="settings-title-description">选择要使用的工作流</div>
+                            </div>
+                            <div class="flex-container flex-start flexnowrap">
+                                <select id="comfy-workflow-select" class="flex1 text_pole"></select>
+                                <div id="comfy-open-workflow-editor" class="menu_button menu_button_icon" title="打开工作流编辑器">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </div>
+                                <div id="comfy-new-workflow" class="menu_button menu_button_icon" title="创建新工作流">
+                                    <i class="fa-solid fa-plus"></i>
+                                </div>
+                                <div id="comfy-delete-workflow" class="menu_button menu_button_icon" title="删除工作流">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 占位符配置项（Sampler / Scheduler / Model / VAE / Resolution / Steps / Scale） -->
+                        <div class="tig-extension-content-item">
+                            <div class="flex-container flex-start">
+                                <div class="flex1">
+                                    <label for="sd_model" data-i18n="Model">模型</label>
+                                    <select id="sd_model">
+                                    </select>
+                                </div>
+
+                                <div class="flex1" data-sd-source="comfy,auto">
+                                    <label for="sd_vae">VAE</label>
+                                    <select id="sd_vae">
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="flex-container flex-start">
+                                <div class="flex1" data-sd-source="extras,horde,auto,drawthings,novel,vlad,comfy">
+                                    <label for="sd_sampler" data-i18n="Sampling method">采样方法</label>
+                                    <select id="sd_sampler">
+                                    </select>
+                                </div>
+
+                                <div class="flex1" data-sd-source="comfy,auto,novel">
+                                    <label for="sd_scheduler" data-i18n="Scheduler">调度器</label>
+                                    <select id="sd_scheduler">
+                                    </select>
+                                </div>
+                            </div>
+
+
+
+                            <div class="flex-container flex-start">
+                                <div class="flex1 resolution-full-width">
+                                    <label for="sd_resolution" data-i18n="Resolution">分辨率</label>
+                                    <select id="sd_resolution">
+                                    </select>
+                                </div>
+
+                                <div class="flex1" data-sd-source="auto,vlad,drawthings" style="display: none;">
+                                    <label for="sd_hr_upscaler" data-i18n="Upscaler">图像扩大器</label>
+                                    <select id="sd_hr_upscaler"></select>
+                                </div>
+                            </div>
+
+                            <div class="flex-container range-row">
+                                <div class="range-item">
+                                    <small>
+                                        <span data-i18n="Sampling steps">采样步数</span>
+                                    </small>
+                                    <input class="neo-range-slider" type="range" id="sd_steps" name="sd_steps" min="1"
+                                        max="150" step="1" value="20">
+                                    <input class="neo-range-input" type="number" id="sd_steps_value" data-for="sd_steps"
+                                        min="1" max="150" step="1" value="20">
+                                </div>
+
+                                <div class="range-item">
+                                    <small>
+                                        <span data-i18n="CFG Scale">CFG缩放</span>
+                                    </small>
+                                    <input class="neo-range-slider" type="range" id="sd_scale" name="sd_scale" min="1"
+                                        max="30" step="0.1" value="7">
+                                    <input class="neo-range-input" type="number" id="sd_scale_value" data-for="sd_scale"
+                                        min="1" max="30" step="0.1" value="7">
+                                </div>
+                            </div>
+
+                            <!-- 宽度/高度控制 -->
+                            <div id="sd_dimensions_block" class="flex-container range-row">
+                                <div class="range-item">
+                                    <small>
+                                        <span data-i18n="Width">宽度</span>
+                                    </small>
+                                    <input class="neo-range-slider" type="range" id="sd_width" name="sd_width"
+                                        max="2048" min="64" step="64" value="1024">
+                                    <input class="neo-range-input" type="number" id="sd_width_value" data-for="sd_width"
+                                        max="2048" min="64" step="64" value="1024">
+                                </div>
+
+                                <div class="range-item">
+                                    <small>
+                                        <span data-i18n="Height">高度</span>
+                                    </small>
+                                    <input class="neo-range-slider" type="range" id="sd_height" name="sd_height"
+                                        max="2048" min="64" step="64" value="1024">
+                                    <input class="neo-range-input" type="number" id="sd_height_value"
+                                        data-for="sd_height" max="2048" min="64" step="64" value="1024">
+                                </div>
+
+                                <div id="sd_swap_dimensions" class="right_menu_button interactable" title="交换宽度和高度"
+                                    data-i18n="[title]Swap width and height" tabindex="0" role="button">
+                                    <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                                </div>
+                            </div>
+
+                            <!-- 去噪强度、CLIP Skip等 -->
+                            <div class="flex-container range-row">
+                                <div class="range-item"
+                                    data-sd-source="auto,vlad,drawthings,novel" style="display: none;">
+                                    <small>
+                                        <span data-i18n="Upscale by">扩大倍数</span>
+                                    </small>
+                                    <input class="neo-range-slider" type="range" id="sd_hr_scale" name="sd_hr_scale"
+                                        min="1" max="4" step="0.1" value="1">
+                                    <input class="neo-range-input" type="number" id="sd_hr_scale_value"
+                                        data-for="sd_hr_scale" min="1" max="4" step="0.1" value="1">
+                                </div>
+
+                                <div class="range-item"
+                                    data-sd-source="auto,vlad,comfy">
+                                    <small>
+                                        <span data-i18n="Denoising strength">去噪强度</span>
+                                    </small>
+                                    <input class="neo-range-slider" type="range" id="sd_denoising_strength"
+                                        name="sd_denoising_strength" min="0" max="1" step="0.01" value="0.7">
+                                    <input class="neo-range-input" type="number" id="sd_denoising_strength_value"
+                                        data-for="sd_denoising_strength" min="0" max="1" step="0.01" value="0.7">
+                                </div>
+
+                                <div class="range-item"
+                                    data-sd-source="auto,vlad" style="display: none;">
+                                    <small>
+                                        <span data-i18n="Hires steps (2nd pass)">高清修复步数（第二遍）</span>
+                                    </small>
+                                    <input class="neo-range-slider" type="range" id="sd_hr_second_pass_steps"
+                                        name="sd_hr_second_pass_steps" max="150" step="1" value="0">
+                                    <input class="neo-range-input" type="number" id="sd_hr_second_pass_steps_value"
+                                        data-for="sd_hr_second_pass_steps" max="150" step="1" value="0">
+                                </div>
+
+                                <div class="range-item"
+                                    data-sd-source="auto,vlad,comfy,horde,drawthings,extras">
+                                    <small>
+                                        <span data-i18n="CLIP Skip">片段跳过</span>
+                                    </small>
+                                    <input class="neo-range-slider" type="range" id="sd_clip_skip" name="sd_clip_skip"
+                                        min="1" max="12" step="1" value="1">
+                                    <input class="neo-range-input" type="number" id="sd_clip_skip_value"
+                                        data-for="sd_clip_skip" min="1" max="12" step="1" value="1">
+                                </div>
+                            </div>
+
+                            <!-- 种子 -->
+                            <div data-sd-source="novel,togetherai,pollinations,comfy,drawthings,vlad,auto,horde,extras,stability,bfl"
+                                class="marginTop5">
+                                <label for="sd_seed">
+                                    <span data-i18n="Seed">种子</span>
+                                    <small data-i18n="(-1 for random)">（"-1"为随机）</small>
+                                </label>
+                                <input id="sd_seed" type="number" class="text_pole" min="-1" max="9999999999" step="1"
+                                    value="-1">
+                            </div>
+
+                            <!-- 提示词前缀和负面提示词 -->
+                            <div class="marginTop5">
+                                <label for="sd_prompt_prefix" data-i18n="Common prompt prefix">常见提示词前缀</label>
+                                <textarea id="sd_prompt_prefix" class="text_pole textarea_compact autoSetHeight"
+                                    data-i18n="[placeholder]sd_prompt_prefix_placeholder"
+                                    placeholder="使用 {prompt} 指定生成的提示词插入的位置"></textarea>
+                            </div>
+
+                            <div class="marginTop5">
+                                <label for="sd_negative_prompt" data-i18n="Negative common prompt prefix">常见负面提示词前缀</label>
+                                <textarea id="sd_negative_prompt" class="text_pole textarea_compact autoSetHeight"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- API 与模型 Tab -->
+                <div id="tab-api-content" class="tig-extension-content flex flexFlowColumn gap10px" style="display: none;">
+                    <div class="major-divider-container">
+                        <div class="major-divider-text"><i class="fa-solid fa-plug margin-r5"></i>API 与模型配置</div>
+                        <div class="major-divider-line"></div>
+                    </div>
+
+                    <div class="tig-extension-content-item">
+                        <div class="flex flexFlowColumn">
+                            <div class="settings-title-text">API 提供商</div>
+                            <div class="settings-title-description">选择兼容的 OpenAI API 提供商</div>
+                        </div>
+                        <select id="openai-provider-select" class="model-select">
+                            <option value="openai-compatible">OpenAI 自定义兼容</option>
+                        </select>
+                    </div>
+
+                    <div class="tig-extension-content-item">
+                        <div class="flex flexFlowColumn">
+                            <div class="settings-title-text">API URL</div>
+                            <div class="settings-title-description">OpenAI 兼容 API 根地址</div>
+                        </div>
+                        <input id="openai-api-url" type="text" class="api-input"
+                            placeholder="例如: http://127.0.0.1:7861" />
+                    </div>
+
+                    <div class="tig-extension-content-item">
+                        <div class="flex flexFlowColumn">
+                            <div class="settings-title-text">API Key</div>
+                            <div class="settings-title-description">用于访问 API 的密钥</div>
+                        </div>
+                        <div class="flex-container flex-start flexnowrap">
+                            <input id="openai-api-key" type="password" class="api-input flex1" placeholder="•••" />
+                            <div id="openai-api-key-toggle" class="test-button" title="显示/隐藏">
+                                <i class="fa-solid fa-eye"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tig-extension-content-item">
+                        <div class="flex flexFlowColumn">
+                            <div class="settings-title-text">模型</div>
+                            <div class="settings-title-description">选择所使用的模型</div>
+                        </div>
+                        <div class="flex-container flex-start flexnowrap" style="flex-wrap: nowrap;">
+                            <select id="openai-model-select" class="model-select">
+                                <option value="">-- 选择模型 --</option>
+                            </select>
+                            <div id="openai-refresh-models" class="test-button" title="刷新模型列表">
+                                <i class="fa-solid fa-rotate"></i>
+                                刷新
+                            </div>
+                        </div>
+                        <div id="openai-models-meta" class="small_note" style="margin-top:4px;">已加载 0 个可用模型</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
