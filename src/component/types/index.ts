@@ -63,11 +63,12 @@ export interface AIMessage {
  * OpenAI兼容API请求参数接口
  */
 export interface OpenAICompatibleOptions {
-    apiUrl: string; // OpenAI兼容API的根地址
-    apiKey: string; // 用于认证的API密钥
-    model: string; // 使用的模型名称
-    maxTokens?: number; // 最大生成token数（可选）
-    temperature?: number; // 采样温度（可选）
+    apiUrl: string;
+    apiKey: string;
+    model: string;
+    maxTokens?: number;
+    temperature?: number;
+    abortSignal?: AbortSignal;
 }
 
 /**

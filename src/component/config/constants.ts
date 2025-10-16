@@ -1,19 +1,25 @@
 // 应用常量配置
 export const APP_CONSTANTS = {
-    // 默认ComfyUI URL - 提供默认值
-    DEFAULT_COMFY_URL: 'http://127.0.0.1:8188',
+    // 默认ComfyUI URL - 从环境变量读取，提供默认值
+    DEFAULT_COMFY_URL: import.meta.env.VITE_DEFAULT_COMFY_URL || 'http://127.0.0.1:8188',
 
     // 默认OpenAI API URL - 使用相对路径，让SillyTavern代理请求
-    DEFAULT_OPENAI_API_URL: '',
+    DEFAULT_OPENAI_API_URL: import.meta.env.VITE_DEFAULT_OPENAI_API_URL || '',
+
+    // 调试模式
+    DEBUG_MODE: import.meta.env.VITE_DEBUG_MODE === 'true',
+
+    // 日志级别
+    LOG_LEVEL: import.meta.env.VITE_LOG_LEVEL || 'info',
 
     // 默认设置值
     DEFAULT_SETTINGS: {
         extensionEnabled: true,
         source: 'comfy',
         openaiProvider: 'openai-compatible',
-        openaiMaxTokens: 65500,
-        openaiTemperature: 1.2,
-        openaiContextCount: 2,
+        openaiMaxTokens: parseInt(import.meta.env.VITE_DEFAULT_OPENAI_MAX_TOKENS) || 65500,
+        openaiTemperature: parseFloat(import.meta.env.VITE_DEFAULT_OPENAI_TEMPERATURE) || 1.2,
+        openaiContextCount: parseInt(import.meta.env.VITE_DEFAULT_OPENAI_CONTEXT_COUNT) || 2,
         sd_resolution: 'sd_res_1024x1024',
         sd_steps: 20,
         sd_scale: 7,
@@ -22,15 +28,19 @@ export const APP_CONSTANTS = {
         sd_denoising_strength: 0.7,
         sd_clip_skip: 1,
         sd_seed: -1,
-        sd_prompt_prefix: 'best quality, absurdres, masterpiece,score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up, ',
-        sd_negative_prompt: 'lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry',
+        sd_prompt_prefix:
+            'best quality, absurdres, masterpiece,score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up, ',
+        sd_negative_prompt:
+            'lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry',
     },
 
     // 质量标签
-    QUALITY_TAGS: 'best quality, absurdres, masterpiece,score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up, ',
+    QUALITY_TAGS:
+        'best quality, absurdres, masterpiece,score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up, ',
 
     // 负面提示词
-    NEGATIVE_PROMPT: 'lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry',
+    NEGATIVE_PROMPT:
+        'lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry',
 
     // 存储键
     STORAGE_KEYS: {

@@ -7,10 +7,7 @@ import log from '../logger';
 /**
  * 通用ComfyUI API调用函数
  */
-async function callComfyAPI<T>(
-    endpoint: string,
-    settings: ComfyUISettings
-): Promise<T> {
+async function callComfyAPI<T>(endpoint: string, settings: ComfyUISettings): Promise<T> {
     if (!settings.comfyUrl) {
         throw new Error('ComfyUI URL未配置');
     }
@@ -93,23 +90,30 @@ export async function loadComfyVaes(settings: ComfyUISettings): Promise<ComfyUIO
     }
 
     try {
-        log.info('🔍 [VAE Debug] 开始加载VAE列表...');
-        log.info('🔍 [VAE Debug] ComfyUI URL:', settings.comfyUrl);
-
         const result = await callComfyAPI<ComfyUIOption[]>('/api/sd/comfy/vaes', settings);
 
-        log.info('🔍 [VAE Debug] VAE API响应:', result);
-        log.info('🔍 [VAE Debug] VAE数量:', result?.length || 0);
-
-        if (result && result.length > 0) {
-            log.info('🔍 [VAE Debug] 前3个VAE选项:', result.slice(0, 3));
+        // 如果API返回空结果，可能是因为模型使用了Baked VAE
+        if (!result || result.length === 0) {
+            log.info('No VAE options returned from API - model likely uses Baked VAE');
+            // 返回Baked VAE选项，让用户知道模型有内置VAE
+            return [
+                {
+                    value: 'Baked VAE',
+                    text: 'Baked VAE (内置)',
+                },
+            ];
         }
 
         return result;
     } catch (error) {
-        // 静默处理错误，不显示错误提示（参考主站插件）
         log.warn('Failed to load ComfyUI VAEs:', error);
-        return [];
+        // API调用失败时，也提供Baked VAE选项
+        return [
+            {
+                value: 'Baked VAE',
+                text: 'Baked VAE (内置)',
+            },
+        ];
     }
 }
 
@@ -121,13 +125,13 @@ const CACHE_KEYS = {
     SAMPLERS: 'comfyui_samplers_cache',
     SCHEDULERS: 'comfyui_schedulers_cache',
     VAES: 'comfyui_vaes_cache',
-    LAST_UPDATE: 'comfyui_options_last_update'
+    LAST_UPDATE: 'comfyui_options_last_update',
 };
 
 /**
- * 缓存过期时间（5分钟）
+ * 缓存过期时间（从环境变量读取，默认5分钟）
  */
-const CACHE_EXPIRE_TIME = 5 * 60 * 1000;
+const CACHE_EXPIRE_TIME = parseInt(import.meta.env.VITE_CACHE_EXPIRE_TIME) || 5 * 60 * 1000;
 
 /**
  * 检查缓存是否有效
@@ -138,7 +142,7 @@ function isCacheValid(): boolean {
 
     const now = Date.now();
     const lastUpdateTime = parseInt(lastUpdate);
-    return (now - lastUpdateTime) < CACHE_EXPIRE_TIME;
+    return now - lastUpdateTime < CACHE_EXPIRE_TIME;
 }
 
 /**
@@ -174,7 +178,6 @@ function saveToCache(key: string, data: ComfyUIOption[]): void {
 export async function loadAllComfyOptions(settings: ComfyUISettings) {
     // 如果缓存有效，优先使用缓存
     if (isCacheValid()) {
-        log.info('🔍 [Cache Debug] 使用缓存加载选项');
         const cachedModels = loadFromCache(CACHE_KEYS.MODELS);
         const cachedSamplers = loadFromCache(CACHE_KEYS.SAMPLERS);
         const cachedSchedulers = loadFromCache(CACHE_KEYS.SCHEDULERS);
@@ -182,29 +185,24 @@ export async function loadAllComfyOptions(settings: ComfyUISettings) {
 
         // 如果所有缓存都存在，直接返回
         if (cachedModels && cachedSamplers && cachedSchedulers && cachedVaes) {
-            log.info('🔍 [Cache Debug] 从缓存加载成功:', {
-                models: cachedModels.length,
-                samplers: cachedSamplers.length,
-                schedulers: cachedSchedulers.length,
-                vaes: cachedVaes.length
-            });
+            log.info('Loaded ComfyUI options from cache');
             return {
                 models: cachedModels,
                 samplers: cachedSamplers,
                 schedulers: cachedSchedulers,
-                vaes: cachedVaes
+                vaes: cachedVaes,
             };
         }
     }
 
-    log.info('🔍 [Cache Debug] 缓存无效或不存在，重新请求API');
+    log.info('Loading ComfyUI options from API');
 
     // 缓存无效或不存在，重新请求API
     const [models, samplers, schedulers, vaes] = await Promise.all([
         loadComfyModels(settings),
         loadComfySamplers(settings),
         loadComfySchedulers(settings),
-        loadComfyVaes(settings)
+        loadComfyVaes(settings),
     ]);
 
     // 保存到缓存
@@ -226,7 +224,7 @@ export function clearOptionsCache(): void {
         localStorage.removeItem(CACHE_KEYS.SCHEDULERS);
         localStorage.removeItem(CACHE_KEYS.VAES);
         localStorage.removeItem(CACHE_KEYS.LAST_UPDATE);
-        log.info('🔍 [Cache Debug] 已清除选项缓存');
+        log.info('Options cache cleared');
     } catch (error) {
         log.warn('Failed to clear cache:', error);
     }

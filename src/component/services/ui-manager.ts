@@ -87,35 +87,17 @@ export function populateSelectOptions(
     const select = $root.find(`#${selectId}`);
     select.empty();
 
-    // VAE特定的调试信息
-    if (selectId === 'sd_vae') {
-        log.info('🔍 [VAE UI Debug] 填充VAE下拉框:');
-        log.info('🔍 [VAE UI Debug] 选项数据:', options);
-        log.info('🔍 [VAE UI Debug] 选项数量:', options?.length || 0);
-        log.info('🔍 [VAE UI Debug] 空文本:', emptyText);
-        log.info('🔍 [VAE UI Debug] 选中值:', selectedValue);
-    }
-
     if (options && options.length > 0) {
-        // 先添加空选项
         select.append(`<option value="">-- 请选择 --</option>`);
 
-        options.forEach((option) => {
+        options.forEach(option => {
             const value = option.value || option;
             const text = option.text || option;
             const isSelected = selectedValue && value === selectedValue ? ' selected' : '';
             select.append(`<option value="${value}"${isSelected}>${text}</option>`);
         });
-
-        if (selectId === 'sd_vae') {
-            log.info('🔍 [VAE UI Debug] 成功添加VAE选项，共', options.length, '个');
-        }
     } else {
         select.append(`<option value="">-- ${emptyText} --</option>`);
-
-        if (selectId === 'sd_vae') {
-            log.info('🔍 [VAE UI Debug] 没有VAE选项，显示空文本:', emptyText);
-        }
     }
 
     // 如果指定了选中值且该值在选项中存在，则选中它
@@ -123,9 +105,6 @@ export function populateSelectOptions(
         const optionExists = select.find(`option[value="${selectedValue}"]`).length > 0;
         if (optionExists) {
             select.val(selectedValue);
-            log.info(`🔍 [UI Debug] 恢复选中值 ${selectedValue} 到 ${selectId}`);
-        } else {
-            log.info(`🔍 [UI Debug] 保存的配置 ${selectedValue} 不在当前选项中，保持默认选择`);
         }
     }
 }
@@ -141,7 +120,7 @@ export function clearAllOptions(): void {
         { id: 'sd_model', text: '请先配置ComfyUI URL' },
         { id: 'sd_sampler', text: '请先配置ComfyUI URL' },
         { id: 'sd_scheduler', text: '请先配置ComfyUI URL' },
-        { id: 'sd_vae', text: '请先配置ComfyUI URL' }
+        { id: 'sd_vae', text: '请先配置ComfyUI URL' },
     ];
 
     comfySelects.forEach(({ id, text }) => {
@@ -161,7 +140,9 @@ export function clearAllOptions(): void {
     resolutionSelect.empty();
     FIXED_OPTIONS.resolutions.forEach(option => {
         const selected = option.value === 'sd_res_1024x1024' ? ' selected' : '';
-        resolutionSelect.append(`<option value="${option.value}"${selected}>${option.text}</option>`);
+        resolutionSelect.append(
+            `<option value="${option.value}"${selected}>${option.text}</option>`
+        );
     });
 }
 
@@ -172,21 +153,12 @@ export function restoreSelectedOptions(): void {
     const settings = getSettings();
     const $root = $('#text-image-generator-extension-container');
 
-    log.info('🔍 [UI Debug] 开始恢复用户保存的配置:', {
-        sd_model: settings.sd_model,
-        sd_sampler: settings.sd_sampler,
-        sd_scheduler: settings.sd_scheduler,
-        sd_vae: settings.sd_vae,
-        sd_resolution: settings.sd_resolution
-    });
-
-    // 恢复各个选择框的值，只有当选项存在时才设置
     const selects = [
         { id: 'sd_model', value: settings.sd_model },
         { id: 'sd_sampler', value: settings.sd_sampler },
         { id: 'sd_scheduler', value: settings.sd_scheduler },
         { id: 'sd_vae', value: settings.sd_vae },
-        { id: 'sd_resolution', value: settings.sd_resolution }
+        { id: 'sd_resolution', value: settings.sd_resolution },
     ];
 
     selects.forEach(({ id, value }) => {
@@ -195,9 +167,6 @@ export function restoreSelectedOptions(): void {
             const optionExists = select.find(`option[value="${value}"]`).length > 0;
             if (optionExists) {
                 select.val(value);
-                log.info(`🔍 [UI Debug] 成功恢复 ${id} = ${value}`);
-            } else {
-                log.info(`🔍 [UI Debug] ${id} 的保存值 ${value} 不在当前选项中`);
             }
         }
     });

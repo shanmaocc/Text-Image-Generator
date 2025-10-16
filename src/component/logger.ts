@@ -1,6 +1,8 @@
 import log from 'loglevel';
+import { APP_CONSTANTS } from './config/constants';
 
-// loglevel 默认级别是 WARN，只有 warn 和 error 会显示
-// 需要在主入口文件中调用 log.setLevel('info') 来显示 info 级别
+// 根据环境变量设置日志级别
+const logLevel = APP_CONSTANTS.LOG_LEVEL as log.LogLevelDesc;
+log.setLevel(logLevel);
 
 export default log;

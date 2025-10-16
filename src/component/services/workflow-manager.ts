@@ -1,6 +1,11 @@
 // 工作流管理服务模块
 import { Popup, POPUP_TYPE } from '@sillytavern/scripts/popup';
-import { deleteWorkflowFile, loadWorkflowFile, loadWorkflowList, saveWorkflowFile } from './api-service';
+import {
+    deleteWorkflowFile,
+    loadWorkflowFile,
+    loadWorkflowList,
+    saveWorkflowFile,
+} from './api-service';
 import { getSettings, saveSetting } from './ui-manager';
 
 const PLACEHOLDERS = [
@@ -25,7 +30,7 @@ const CUSTOM_PH_STORAGE_KEY = 'textToPicCustomPlaceholders';
 /**
  * 获取自定义占位符
  */
-function getCustomPlaceholders(): Array<{find: string, replace: string}> {
+function getCustomPlaceholders(): Array<{ find: string; replace: string }> {
     const raw = localStorage.getItem(CUSTOM_PH_STORAGE_KEY);
     try {
         return raw ? JSON.parse(raw) : [];
@@ -37,7 +42,7 @@ function getCustomPlaceholders(): Array<{find: string, replace: string}> {
 /**
  * 保存自定义占位符
  */
-function saveCustomPlaceholders(placeholders: Array<{find: string, replace: string}>): void {
+function saveCustomPlaceholders(placeholders: Array<{ find: string; replace: string }>): void {
     localStorage.setItem(CUSTOM_PH_STORAGE_KEY, JSON.stringify(placeholders));
 }
 
@@ -47,9 +52,9 @@ function saveCustomPlaceholders(placeholders: Array<{find: string, replace: stri
 export async function updateWorkflowSelect(): Promise<void> {
     try {
         const workflows = await loadWorkflowList();
-    const select = $('#comfy-workflow-select');
-    select.empty();
-    select.append('<option value="">-- 未选择 --</option>');
+        const select = $('#comfy-workflow-select');
+        select.empty();
+        select.append('<option value="">-- 未选择 --</option>');
 
         workflows.forEach(workflow => {
             const option = document.createElement('option');
@@ -59,7 +64,7 @@ export async function updateWorkflowSelect(): Promise<void> {
         });
 
         // 恢复选中的工作流
-    const settings = getSettings();
+        const settings = getSettings();
         if (settings.comfyWorkflowName && workflows.includes(settings.comfyWorkflowName)) {
             select.val(settings.comfyWorkflowName);
         }
@@ -114,17 +119,29 @@ function replaceWorkflowPlaceholders(workflow: any): any {
     result = result.replace(/%vae%/g, settings.sd_vae || '');
     result = result.replace(/%sampler%/g, settings.sd_sampler || '');
     result = result.replace(/%scheduler%/g, settings.sd_scheduler || '');
-    result = result.replace(/%steps%/g, String(settings.sd_steps || 20));
 
-    result = result.replace(/%scale%/g, String(settings.sd_scale || 7));
-    result = result.replace(/%denoise%/g, String(settings.sd_denoising_strength || 0.7));
-    result = result.replace(/%clip_skip%/g, String(settings.sd_clip_skip || 1));
-    result = result.replace(/%width%/g, String(settings.sd_width || 1024));
-    result = result.replace(/%height%/g, String(settings.sd_height || 1024));
+    // 数值类型占位符 - 去掉引号，保持数字类型
+    result = result.replace(/"%steps%"/g, String(settings.sd_steps || 20));
+    result = result.replace(/"%scale%"/g, String(settings.sd_scale || 7));
+    result = result.replace(/"%denoise%"/g, String(settings.sd_denoising_strength || 0.7));
+    result = result.replace(/"%clip_skip%"/g, String(settings.sd_clip_skip || 1));
+    result = result.replace(/"%width%"/g, String(settings.sd_width || 1024));
+    result = result.replace(/"%height%"/g, String(settings.sd_height || 1024));
 
-    // 处理种子
-    const seed = settings.sd_seed >= 0 ? settings.sd_seed : Math.round(Math.random() * Number.MAX_SAFE_INTEGER);
-    result = result.replace(/%seed%/g, String(seed));
+    // 处理种子 - 为每个节点生成不同的随机种子
+    const generateRandomSeed = () => Math.round(Math.random() * Number.MAX_SAFE_INTEGER);
+
+    if (settings.sd_seed >= 0) {
+        // 如果用户指定了种子，使用用户种子
+        result = result.replace(/"%seed%"/g, String(settings.sd_seed));
+    } else {
+        // 为每个节点生成不同的随机种子
+        let seedCount = 0;
+        result = result.replace(/"%seed%"/g, () => {
+            seedCount++;
+            return String(generateRandomSeed());
+        });
+    }
 
     // 暂时跳过自定义占位符处理，专注于基本占位符
     // const customPlaceholders = getCustomPlaceholders();
@@ -175,8 +192,7 @@ export function quickReplacePlaceholders(): void {
 /**
  * 递归替换工作流中的值为占位符
  */
-function replaceValuesWithPlaceholders(obj: any): any {
-
+function replaceValuesWithPlaceholders(obj: any, nodeId?: string): any {
     if (typeof obj === 'string') {
         return obj;
     }
@@ -197,10 +213,11 @@ function replaceValuesWithPlaceholders(obj: any): any {
                 // 保留class_type不变
                 result[key] = value;
             } else if (key === 'inputs' && typeof value === 'object') {
-                // 处理inputs对象
-                result[key] = replaceInputsWithPlaceholders(value as any);
+                // 处理inputs对象，传递节点信息
+                const classType = obj['class_type'] || '';
+                result[key] = replaceInputsWithPlaceholders(value as any, classType, nodeId);
             } else {
-                result[key] = replaceValuesWithPlaceholders(value);
+                result[key] = replaceValuesWithPlaceholders(value, key);
             }
         }
 
@@ -213,8 +230,22 @@ function replaceValuesWithPlaceholders(obj: any): any {
 /**
  * 替换inputs中的值为占位符
  */
-function replaceInputsWithPlaceholders(inputs: any): any {
+function replaceInputsWithPlaceholders(
+    inputs: any,
+    classType: string = '',
+    nodeId: string = ''
+): any {
     const result: any = {};
+
+    // 特殊节点类型：放大相关节点，这些节点应该保留特定参数的原始值
+    const isUpscaleNode = [
+        'PixelKSampleUpscalerProvider',
+        'PixelKSampleUpscaler',
+        'IterativeLatentUpscale',
+        'IterativeImageUpscale',
+        'UltimateSDUpscale',
+        'ImageUpscaleWithModel',
+    ].includes(classType);
 
     for (const [key, value] of Object.entries(inputs)) {
         // 如果值是数组，说明是关联节点，不应该被替换
@@ -222,16 +253,45 @@ function replaceInputsWithPlaceholders(inputs: any): any {
             result[key] = value;
             continue;
         }
+
+        // 🔧 对于放大节点，保留采样器、调度器、去噪参数的原始值
+        if (isUpscaleNode) {
+            if (key === 'sampler_name' || key === 'sampler') {
+                result[key] = value; // 保留原值（如 res_multistep）
+                continue;
+            }
+            if (key === 'scheduler' || key === 'scheduler_name') {
+                result[key] = value; // 保留原值（如 kl_optimal）
+                continue;
+            }
+            if (key === 'denoise' || key === 'denoising_strength') {
+                result[key] = value; // 保留原值（如 0.3）
+                continue;
+            }
+        }
+
+        // 🔧 对于KSampler节点，如果去噪值为1（完全去噪），保留原值
+        if (classType === 'KSampler' && (key === 'denoise' || key === 'denoising_strength')) {
+            if (typeof value === 'number' && value === 1) {
+                result[key] = value; // 保留原值1，不替换为%denoise%
+                continue;
+            }
+        }
+
         // 根据字段名判断应该替换为什么占位符
         if (key === 'text' && typeof value === 'string') {
             // 文本字段，检查是否包含提示词相关内容
-            if (value.toLowerCase().includes('neg')
-                || value.toLowerCase().includes('negative')
-            || value.toLowerCase().includes('bad')) {
+            if (
+                value.toLowerCase().includes('neg') ||
+                value.toLowerCase().includes('negative') ||
+                value.toLowerCase().includes('bad')
+            ) {
                 result[key] = '%negative_prompt%';
-            } else if (value.toLowerCase().includes('pos')
-                || value.toLowerCase().includes('positive')
-                || value.toLowerCase().includes('best')) {
+            } else if (
+                value.toLowerCase().includes('pos') ||
+                value.toLowerCase().includes('positive') ||
+                value.toLowerCase().includes('best')
+            ) {
                 result[key] = '%prompt%';
             } else {
                 result[key] = '%prompt%';
@@ -292,7 +352,11 @@ export async function openWorkflowEditor(): Promise<void> {
         const workflowContent = await loadWorkflowFile(workflowName);
 
         // 加载工作流编辑器HTML模板
-        const editorHtml = $(await $.get('scripts/extensions/third-party/Text-Image-Generator/comfyWorkflowEditor.html'));
+        const editorHtml = $(
+            await $.get(
+                'scripts/extensions/third-party/Text-Image-Generator/comfyWorkflowEditor.html'
+            )
+        );
 
         const saveValue = (_popup: any) => {
             workflow = $('#sd_comfy_workflow_editor_workflow').val()?.toString() || '';
@@ -300,11 +364,11 @@ export async function openWorkflowEditor(): Promise<void> {
         };
 
         const popup = new Popup(editorHtml, POPUP_TYPE.CONFIRM, '', {
-        okButton: '保存',
-        cancelButton: '取消',
+            okButton: '保存',
+            cancelButton: '取消',
             wide: true,
             large: true,
-            onClosing: saveValue
+            onClosing: saveValue,
         });
 
         const popupResult = popup.show();
@@ -312,17 +376,19 @@ export async function openWorkflowEditor(): Promise<void> {
 
         const checkPlaceholders = () => {
             workflow = $('#sd_comfy_workflow_editor_workflow').val()?.toString() || '';
-            $('.sd_comfy_workflow_editor_placeholder_list > li[data-placeholder]').each(function () {
-                const key = this.getAttribute('data-placeholder');
-                const found = workflow.search(`"%${key}%"`) !== -1;
-                this.classList[found ? 'remove' : 'add']('sd_comfy_workflow_editor_not_found');
-            });
+            $('.sd_comfy_workflow_editor_placeholder_list > li[data-placeholder]').each(
+                function () {
+                    const key = this.getAttribute('data-placeholder');
+                    const found = workflow.search(`"%${key}%"`) !== -1;
+                    this.classList[found ? 'remove' : 'add']('sd_comfy_workflow_editor_not_found');
+                }
+            );
         };
 
         $('#sd_comfy_workflow_editor_name').text(workflowName);
         $('#sd_comfy_workflow_editor_workflow').val(workflow);
 
-        const addPlaceholderDom = (placeholder: {find: string, replace: string}) => {
+        const addPlaceholderDom = (placeholder: { find: string; replace: string }) => {
             const el = $(`
                 <li class="sd_comfy_workflow_editor_not_found" data-placeholder="${placeholder.find}">
             <span class="sd_comfy_workflow_editor_custom_remove" title="Remove custom placeholder">⊘</span>
@@ -359,8 +425,8 @@ export async function openWorkflowEditor(): Promise<void> {
                     placeholders.splice(index, 1);
                     saveCustomPlaceholders(placeholders);
                 }
-        });
-    };
+            });
+        };
 
         $('#sd_comfy_workflow_editor_placeholder_add').on('click', () => {
             const placeholders = getCustomPlaceholders();
@@ -382,7 +448,7 @@ export async function openWorkflowEditor(): Promise<void> {
         $('#sd_comfy_workflow_editor_workflow').on('input', checkPlaceholders);
 
         // 快捷替换按钮事件
-        $('#sd_comfy_workflow_editor_quick_replace').on('click', function() {
+        $('#sd_comfy_workflow_editor_quick_replace').on('click', function () {
             quickReplacePlaceholders();
         });
 

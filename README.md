@@ -19,23 +19,25 @@
 1. 打开 SillyTavern
 2. 进入 **扩展设置** → **安装扩展**
 3. 在 **Git 仓库 URL** 中输入：
-   ```
-   https://github.com/shanmaocc/Text-Image-Generator.git
-   ```
+    ```
+    https://github.com/shanmaocc/Text-Image-Generator.git
+    ```
 4. 点击 **安装**
 5. 安装完成后，在扩展列表中启用 **Text Image Generator**
 
 #### 方式二：手动安装
 
 1. 克隆仓库：
-   ```bash
-   git clone https://github.com/shanmaocc/Text-Image-Generator.git
-   ```
+
+    ```bash
+    git clone https://github.com/shanmaocc/Text-Image-Generator.git
+    ```
 
 2. 将整个项目文件夹复制到SillyTavern的扩展目录：
-   ```
-   SillyTavern/public/scripts/extensions/third-party/Text-Image-Generator/
-   ```
+
+    ```
+    SillyTavern/public/scripts/extensions/third-party/Text-Image-Generator/
+    ```
 
 3. 重启SillyTavern
 
@@ -44,15 +46,18 @@
 ### 配置
 
 #### 1. AI API配置
+
 - 在扩展设置中配置OpenAI兼容API的URL和模型
 - 支持OpenAI、Claude、本地模型等
 
 #### 2. ComfyUI配置
+
 - 设置ComfyUI服务器地址（默认：http://127.0.0.1:8188）
 - 配置模型、VAE、采样器等参数
 - 选择或上传ComfyUI工作流文件
 
 #### 3. 图片生成参数
+
 - **分辨率**：支持多种预设分辨率
 - **采样步数**：控制生成质量
 - **CFG Scale**：控制提示词遵循程度
@@ -64,19 +69,22 @@
 
 1. 在聊天界面中，AI回复消息后会出现"生成图片"按钮
 2. 点击按钮，扩展会：
-   - 使用AI分析消息内容生成提示词
-   - 调用ComfyUI生成图片
-   - 将图片插入到聊天中
+    - 使用AI分析消息内容生成提示词
+    - 调用ComfyUI生成图片
+    - 将图片插入到聊天中
 
 ### 高级功能
 
 #### 工作流编辑器
+
 - 支持可视化编辑ComfyUI工作流
 - 实时预览工作流结构
 - 支持占位符替换系统
 
 #### 占位符系统
+
 支持以下占位符：
+
 - `%prompt%` - 正向提示词
 - `%negative_prompt%` - 负面提示词
 - `%model%` - 模型名称
@@ -95,21 +103,57 @@
 
 ```
 Text-Image-Generator/
-├── src/                    # TypeScript源代码
-│   ├── index.ts           # 主扩展文件
-│   └── component/         # 组件模块
-│       ├── config/        # 配置相关
-│       ├── services/      # 服务层
-│       ├── types/         # 类型定义
-│       └── utils/         # 工具函数
-├── dist/                  # 编译输出
-├── @types/               # 类型定义文件
-├── package.json          # 项目配置
-├── tsconfig.json         # TypeScript配置
-├── vite.config.ts        # Vite构建配置
-├── manifest.json         # SillyTavern扩展清单
-├── index.html            # 扩展界面模板
-└── style.css             # 样式文件
+├── src/                          # TypeScript源代码
+│   ├── index.ts                 # 主扩展文件
+│   └── component/               # 组件模块
+│       ├── config/              # 配置相关
+│       │   ├── constants.ts     # 应用常量(支持环境变量)
+│       │   └── config.ts        # 工作流配置
+│       ├── services/            # 服务层
+│       │   ├── api-service.ts   # ComfyUI API
+│       │   ├── ui-manager.ts    # UI状态管理
+│       │   └── workflow-manager.ts
+│       ├── ui/                  # UI配置层(模块化)
+│       │   ├── ui-config-core.ts
+│       │   ├── ui-config-comfy.ts
+│       │   ├── ui-config-openai.ts
+│       │   ├── ui-config-styles.ts
+│       │   └── ui-config-presets.ts
+│       ├── image/               # 图片生成(模块化)
+│       │   ├── button-manager.ts
+│       │   ├── image-generator.ts
+│       │   └── event-handlers.ts
+│       ├── types/               # 类型定义
+│       ├── utils/               # 工具函数
+│       └── logger.ts            # 日志系统
+├── dist/                        # 编译输出
+├── @types/                      # 类型定义文件
+├── .github/workflows/           # CI/CD配置
+├── package.json                 # 项目配置
+├── tsconfig.json                # TypeScript配置
+├── vite.config.ts               # Vite构建配置
+├── .editorconfig                # 编辑器配置
+├── .env.example                 # 环境变量示例
+├── ARCHITECTURE.md              # 架构文档
+└── style.css                    # 样式文件
+```
+
+### 环境变量
+
+支持通过`.env.development`或`.env.production`配置：
+
+```bash
+# 调试模式
+VITE_DEBUG_MODE=false
+
+# 默认ComfyUI URL
+VITE_DEFAULT_COMFY_URL=http://127.0.0.1:8188
+
+# 日志级别
+VITE_LOG_LEVEL=info
+
+# 缓存过期时间(毫秒)
+VITE_CACHE_EXPIRE_TIME=300000
 ```
 
 ### 构建

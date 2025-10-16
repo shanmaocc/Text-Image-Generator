@@ -1,67 +1,37 @@
 // Text-Image-Generator 扩展 - 基础版本
 
 import log from '@/component/logger';
-import {
-    handleChatLoaded,
-    handleGenerateImageButtonClick,
-    handlePartialRender,
-    partialRenderEvents,
-} from '@/component/render_image';
-import { getSettings } from '@/component/services/ui-manager';
-import { initializeUI } from '@/component/ui-config';
-import { eventSource } from '@sillytavern/script';
-import { renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
+import { EventManager } from '@/component/services/event-manager';
+import { UIInitializer } from '@/component/services/ui-initializer';
 
-const extensionName = 'Text-Image-Generator';
-const extensionFolderPath = `third-party/${extensionName}`;
-
+/**
+ * 初始化第三方挂载
+ */
 function initThirdPartyMount() {
-    // 设置日志级别为 info，让 info 级别可见
-    log.setLevel('info');
+    // 日志级别已在logger.ts中根据环境变量设置
     globalThis.log = log;
 }
 
-// 扩展初始化
-jQuery(async () => {
-    console.log('Text-Image-Generator 扩展加载中...');
+/**
+ * 扩展初始化主函数
+ */
+async function initializeExtension() {
+    log.info('Text-Image-Generator extension loading...');
+
+    // 基础初始化
     initThirdPartyMount();
-    const getContainer = () => $('#extensions_settings');
-    const windowHtml = await renderExtensionTemplateAsync(`${extensionFolderPath}`, 'index');
-    getContainer().append(windowHtml);
-    // 初始化界面功能
-    await initializeUI();
-    console.log('Text-Image-Generator 扩展界面已加载');
-    // 创建包装函数，检查扩展是否启用
-    const wrappedHandleChatLoaded = async () => {
-        const settings = getSettings();
-        if (settings.extensionEnabled) {
-            await handleChatLoaded();
-        }
-    };
 
-    const wrappedHandlePartialRender = (mesId: string, type: string) => {
-        const settings = getSettings();
-        if (settings.extensionEnabled) {
-            handlePartialRender(mesId, type);
-        }
-    };
+    // 创建并绑定事件
+    const eventManager = new EventManager();
+    eventManager.bindEvents();
+    eventManager.exposeToGlobal();
 
-    // 存储事件处理器引用，以便后续清理
-    const eventHandlers = {
-        chatLoaded: wrappedHandleChatLoaded,
-        partialRender: wrappedHandlePartialRender
-    };
+    // 初始化UI
+    const uiInitializer = new UIInitializer();
+    await uiInitializer.initializeUI();
 
-    // 绑定事件
-    eventSource.on('chatLoaded', eventHandlers.chatLoaded); //聊天加载
-    partialRenderEvents.forEach((eventType: string) => {
-        eventSource.on(eventType, eventHandlers.partialRender); //部分渲染
-    });
+    log.info('Text-Image-Generator extension initialization completed');
+}
 
-    // 绑定生成图片按钮的点击事件（使用事件委托，只绑定一次）
-    $(document).off('click', '.generate-image-btn');
-    $(document).on('click', '.generate-image-btn', handleGenerateImageButtonClick);
-
-    // 将事件处理器暴露到全局，以便UI配置可以访问
-    (window as any).textToPicEventHandlers = eventHandlers;
-});
+// 扩展初始化
+jQuery(initializeExtension);
