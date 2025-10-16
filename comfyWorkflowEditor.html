@@ -3,7 +3,13 @@
         <h3><strong>ComfyUI Workflow Editor: <span id="sd_comfy_workflow_editor_name"></span></strong></h3>
         <div class="sd_comfy_workflow_editor_content">
             <div class="flex-container flexFlowColumn sd_comfy_workflow_editor_workflow_container">
-                <label for="sd_comfy_workflow_editor_workflow">Workflow (JSON)</label>
+                <div class="flex-container flex-start flexnowrap" style="margin-bottom: 8px;">
+                    <label for="sd_comfy_workflow_editor_workflow" style="flex: 1;">Workflow (JSON)</label>
+                    <button id="sd_comfy_workflow_editor_quick_replace" class="menu_button menu_button_icon" title="提示:正向提示词替换:需要粘贴的api包含'pos'或'best'关键词,反向提示词替换:需要粘贴的api包含'neg'或'bad'关键词" style="margin-left: 8px;">
+                        <i class="fa-solid fa-magic-wand-sparkles"></i>
+                        <span style="margin-left: 4px;">快捷替换</span>
+                    </button>
+                </div>
                 <textarea id="sd_comfy_workflow_editor_workflow" class="text_pole wide100p textarea_compact flex1" placeholder="Insert your ComfyUI workflow here by copying the JSON data obtained via the 'Save (API Format)' option. This option becomes available after enabling 'Dev Mode' in the settings. Remember to replace specific values within your workflow with placeholders as required for your use case."></textarea>
             </div>
             <div class="sd_comfy_workflow_editor_placeholder_container">

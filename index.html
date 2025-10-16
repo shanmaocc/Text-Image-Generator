@@ -224,9 +224,9 @@
                                         <span data-i18n="CLIP Skip">片段跳过</span>
                                     </small>
                                     <input class="neo-range-slider" type="range" id="sd_clip_skip" name="sd_clip_skip"
-                                        min="1" max="12" step="1" value="1">
+                                        min="-12" max="12" step="1" value="1">
                                     <input class="neo-range-input" type="number" id="sd_clip_skip_value"
-                                        data-for="sd_clip_skip" min="1" max="12" step="1" value="1">
+                                        data-for="sd_clip_skip" min="-12" max="12" step="1" value="1">
                                 </div>
                             </div>
 
@@ -259,59 +259,121 @@
                 </div>
 
                 <!-- API 与模型 Tab -->
-                <div id="tab-api-content" class="tig-extension-content flex flexFlowColumn gap10px" style="display: none;">
-                    <div class="major-divider-container">
-                        <div class="major-divider-text"><i class="fa-solid fa-plug margin-r5"></i>API 与模型配置</div>
-                        <div class="major-divider-line"></div>
-                    </div>
+                <div id="tab-api-content" class="tig-extension-content flex flexFlowColumn gap15px" style="display: none;">
 
-                    <div class="tig-extension-content-item">
-                        <div class="flex flexFlowColumn">
-                            <div class="settings-title-text">API 提供商</div>
-                            <div class="settings-title-description">选择兼容的 OpenAI API 提供商</div>
+                    <!-- 预设配置卡片 -->
+                    <div class="config-card">
+                        <div class="config-card-header">
+                            <i class="fa-solid fa-magic-wand-sparkles"></i>
+                            <span>预设配置</span>
                         </div>
-                        <select id="openai-provider-select" class="model-select">
-                            <option value="openai-compatible">OpenAI 自定义兼容</option>
-                        </select>
-                    </div>
+                        <div class="config-card-content">
+                            <!-- 预设类型选择 -->
+                            <div class="config-section">
+                                <div class="config-section-title">预设类型</div>
+                                <div class="config-section-description">选择提示词预设的来源</div>
+                                <div class="preset-tabs">
+                                    <div id="preset-tab-builtin" class="preset-tab active" data-preset-type="builtin">
+                                        <i class="fa-solid fa-code"></i>
+                                        <span>内置预设</span>
+                                    </div>
+                                    <div id="preset-tab-external" class="preset-tab" data-preset-type="external">
+                                        <i class="fa-solid fa-cloud"></i>
+                                        <span>外部预设</span>
+                                    </div>
+                                </div>
+                            </div>
 
-                    <div class="tig-extension-content-item">
-                        <div class="flex flexFlowColumn">
-                            <div class="settings-title-text">API URL</div>
-                            <div class="settings-title-description">OpenAI 兼容 API 根地址</div>
-                        </div>
-                        <input id="openai-api-url" type="text" class="api-input"
-                            placeholder="例如: http://127.0.0.1:7861" />
-                    </div>
+                            <!-- 内置预设内容 -->
+                            <div id="builtin-preset-content" class="preset-content">
+                                <div class="config-section">
+                                    <div class="config-section-title">AI 提示词生成</div>
+                                    <div class="config-section-description">使用内置AI向模型询问提示词</div>
+                                    <div class="config-note">
+                                        <i class="fa-solid fa-info-circle"></i>
+                                        <span>内置预设将使用配置的API向AI模型询问提示词</span>
+                                    </div>
+                                </div>
+                            </div>
 
-                    <div class="tig-extension-content-item">
-                        <div class="flex flexFlowColumn">
-                            <div class="settings-title-text">API Key</div>
-                            <div class="settings-title-description">用于访问 API 的密钥</div>
-                        </div>
-                        <div class="flex-container flex-start flexnowrap">
-                            <input id="openai-api-key" type="password" class="api-input flex1" placeholder="•••" />
-                            <div id="openai-api-key-toggle" class="test-button" title="显示/隐藏">
-                                <i class="fa-solid fa-eye"></i>
+                            <!-- 外部预设内容 -->
+                            <div id="external-preset-content" class="preset-content" style="display: none;">
+                                <div class="config-section">
+                                    <div class="config-section-title">预设来源</div>
+                                    <div class="config-section-description">选择外部预设的来源</div>
+                                    <select id="external-preset-source" class="model-select">
+                                        <option value="sillytavern">SillyTavern 主站预设</option>
+                                    </select>
+                                </div>
+
+                                <div class="config-section" id="sillytavern-preset-container">
+                                    <div class="config-section-title">主站预设</div>
+                                    <div class="config-section-description">从 SillyTavern 主站加载预设</div>
+                                    <div class="flex-container flex-start flexnowrap">
+                                        <select id="sillytavern-preset-select" class="model-select flex1">
+                                            <option value="">-- 加载预设中... --</option>
+                                        </select>
+                                        <div id="refresh-sillytavern-presets" class="test-button" title="刷新预设列表">
+                                            <i class="fa-solid fa-rotate"></i>
+                                            刷新
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="tig-extension-content-item">
-                        <div class="flex flexFlowColumn">
-                            <div class="settings-title-text">模型</div>
-                            <div class="settings-title-description">选择所使用的模型</div>
+                    <!-- API 配置卡片 -->
+                    <div class="config-card">
+                        <div class="config-card-header">
+                            <i class="fa-solid fa-plug"></i>
+                            <span>API 配置</span>
                         </div>
-                        <div class="flex-container flex-start flexnowrap" style="flex-wrap: nowrap;">
-                            <select id="openai-model-select" class="model-select">
-                                <option value="">-- 选择模型 --</option>
-                            </select>
-                            <div id="openai-refresh-models" class="test-button" title="刷新模型列表">
-                                <i class="fa-solid fa-rotate"></i>
-                                刷新
+                        <div class="config-card-content">
+                            <div class="config-section">
+                                <div class="config-section-title">API 提供商</div>
+                                <div class="config-section-description">选择兼容的 OpenAI API 提供商</div>
+                                <select id="openai-provider-select" class="model-select">
+                                    <option value="openai-compatible">OpenAI 自定义兼容</option>
+                                </select>
+                            </div>
+
+                            <div class="config-section">
+                                <div class="config-section-title">API URL</div>
+                                <div class="config-section-description">OpenAI 兼容 API 根地址</div>
+                                <input id="openai-api-url" type="text" class="api-input"
+                                    placeholder="例如: http://127.0.0.1:7861" />
+                            </div>
+
+                            <div class="config-section">
+                                <div class="config-section-title">API Key</div>
+                                <div class="config-section-description">用于访问 API 的密钥</div>
+                                <div class="flex-container flex-start flexnowrap">
+                                    <input id="openai-api-key" type="password" class="api-input flex1" placeholder="•••" />
+                                    <div id="openai-api-key-toggle" class="test-button" title="显示/隐藏">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="config-section">
+                                <div class="config-section-title">模型</div>
+                                <div class="config-section-description">选择所使用的模型</div>
+                                <div class="flex-container flex-start flexnowrap" style="flex-wrap: nowrap;">
+                                    <select id="openai-model-select" class="model-select">
+                                        <option value="">-- 选择模型 --</option>
+                                    </select>
+                                    <div id="openai-refresh-models" class="test-button" title="刷新模型列表">
+                                        <i class="fa-solid fa-rotate"></i>
+                                        刷新
+                                    </div>
+                                </div>
+                                <div id="openai-models-meta" class="config-note">
+                                    <i class="fa-solid fa-info-circle"></i>
+                                    <span>已加载 0 个可用模型</span>
+                                </div>
                             </div>
                         </div>
-                        <div id="openai-models-meta" class="small_note" style="margin-top:4px;">已加载 0 个可用模型</div>
                     </div>
                 </div>
             </div>

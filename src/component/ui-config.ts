@@ -1,7 +1,8 @@
 // UI 配置管理模块 - 重构版本
 import { getRequestHeaders } from '@sillytavern/script';
+import getContext from '@sillytavern/scripts/st-context';
 import { syncGenerateButtonStateForMessage } from './render_image';
-import { loadAllComfyOptions, validateComfyConnection } from './services/api-service';
+import { loadAllComfyOptions, validateComfyConnection, clearOptionsCache } from './services/api-service';
 import {
     autoSelectFirstOption,
     clearAllOptions,
@@ -31,6 +32,13 @@ export async function populateComfyOptions(): Promise<void> {
 		// 并行加载所有ComfyUI数据
         const { models, samplers, schedulers, vaes } = await loadAllComfyOptions(settings);
 
+        console.log('🔍 [UI Debug] 加载的选项数据:');
+        console.log('🔍 [UI Debug] 模型数量:', models?.length || 0);
+        console.log('🔍 [UI Debug] 采样器数量:', samplers?.length || 0);
+        console.log('🔍 [UI Debug] 调度器数量:', schedulers?.length || 0);
+        console.log('🔍 [UI Debug] VAE数量:', vaes?.length || 0);
+        console.log('🔍 [UI Debug] VAE数据:', vaes);
+
         // 填充各个下拉框
         populateSelectOptions('sd_model', models, '无可用模型', settings.sd_model);
         populateSelectOptions('sd_sampler', samplers, '无可用采样器', settings.sd_sampler);
@@ -42,18 +50,9 @@ export async function populateComfyOptions(): Promise<void> {
 		const resolutionSelect = $root.find('#sd_resolution');
 		resolutionSelect.empty();
 		FIXED_OPTIONS.resolutions.forEach(option => {
-			const selected = option.value === 'sd_res_1024x1024' ? ' selected' : '';
+			const selected = option.value === (settings.sd_resolution || 'sd_res_1024x1024') ? ' selected' : '';
 			resolutionSelect.append(`<option value="${option.value}"${selected}>${option.text}</option>`);
 		});
-
-		// 恢复之前保存的选择
-		restoreSelectedOptions();
-
-		// 如果首次加载且没有保存的选择，自动选择第一个选项
-        autoSelectFirstOption('sd_model', models, 'sd_model');
-        autoSelectFirstOption('sd_sampler', samplers, 'sd_sampler');
-        autoSelectFirstOption('sd_scheduler', schedulers, 'sd_scheduler');
-        autoSelectFirstOption('sd_vae', vaes, 'sd_vae');
 
 	} catch (error) {
 		console.error('Failed to load ComfyUI options:', error);
@@ -67,6 +66,9 @@ export async function populateComfyOptions(): Promise<void> {
  */
 export async function validateComfyUrl(): Promise<void> {
     let url = ($('#comfy-url-input').val() as string) || DEFAULT_COMFY_URL;
+
+    // 清除缓存，强制重新加载选项
+    clearOptionsCache();
     url = normalizeComfyBaseUrl(url);
     const button = $('#comfy-validate-btn');
     const status = $('#comfy-connection-status');
@@ -285,6 +287,180 @@ export function updateStyleSelect(): void {
 }
 
 /**
+ * 加载SillyTavern主站预设列表
+ */
+export async function loadSillyTavernPresets(): Promise<void> {
+    const select = $('#sillytavern-preset-select');
+    const refreshBtn = $('#refresh-sillytavern-presets');
+
+    // 显示加载状态
+    select.empty().append('<option value="">-- 加载预设中... --</option>');
+    refreshBtn.prop('disabled', true);
+
+    try {
+        // 使用主站上下文对象获取预设
+        const context = getContext() as any;
+        console.log('🔍 [Preset Debug] 主站上下文:', context);
+
+        // 从上下文中获取预设数据
+        let presets: any[] = [];
+
+        // 尝试从不同的可能位置获取预设
+        if (context?.presets && Array.isArray(context.presets)) {
+            presets = context.presets;
+        } else if (context?.preset_list && Array.isArray(context.preset_list)) {
+            presets = context.preset_list;
+        } else if (context?.prompt_presets && Array.isArray(context.prompt_presets)) {
+            presets = context.prompt_presets;
+        } else if (context?.settings?.presets && Array.isArray(context.settings.presets)) {
+            presets = context.settings.presets;
+        } else {
+            // 尝试从全局对象获取
+            const w = window as any;
+            if (w?.presets && Array.isArray(w.presets)) {
+                presets = w.presets;
+            } else if (w?.preset_list && Array.isArray(w.preset_list)) {
+                presets = w.preset_list;
+            } else if (w?.extension_settings?.presets && Array.isArray(w.extension_settings.presets)) {
+                presets = w.extension_settings.presets;
+            }
+        }
+
+        console.log('🔍 [Preset Debug] 找到的预设:', presets);
+
+        // 清空并填充预设选项
+        select.empty();
+        select.append('<option value="">-- 选择预设 --</option>');
+
+        if (presets.length === 0) {
+            select.append('<option value="" disabled>-- 暂无预设 --</option>');
+            console.log('🔍 [Preset Debug] 没有找到预设数据');
+        } else {
+            presets.forEach((preset: any, index: number) => {
+                // 处理不同的预设数据结构
+                let name = '未命名预设';
+                let value = '';
+
+                if (typeof preset === 'string') {
+                    name = preset;
+                    value = preset;
+                } else if (preset && typeof preset === 'object') {
+                    name = preset.name || preset.title || preset.label || `预设 ${index + 1}`;
+                    value = preset.id || preset.name || preset.title || preset.label || name;
+                }
+
+                select.append(`<option value="${value}">${name}</option>`);
+            });
+        }
+
+        // 恢复之前的选择
+        const settings = getSettings();
+        if (settings.selectedSillyTavernPreset) {
+            select.val(settings.selectedSillyTavernPreset);
+        }
+
+        toastr.success(`成功加载 ${presets.length} 个预设`);
+
+    } catch (error: any) {
+        console.error('加载SillyTavern预设失败:', error);
+        select.empty().append('<option value="">-- 加载失败 --</option>');
+        toastr.error(`加载预设失败: ${error.message || '无法获取预设数据'}`);
+    } finally {
+        refreshBtn.prop('disabled', false);
+    }
+}
+
+/**
+ * 加载选中的SillyTavern预设内容
+ */
+export async function loadSillyTavernPresetContent(presetId: string): Promise<void> {
+    try {
+        // 使用主站上下文对象获取预设详情
+        const context = getContext() as any;
+        console.log('🔍 [Preset Content Debug] 查找预设:', presetId);
+        console.log('🔍 [Preset Content Debug] 主站上下文:', context);
+
+        // 从上下文中查找对应的预设
+        let presets: any[] = [];
+        let targetPreset: any = null;
+
+        // 尝试从不同的可能位置获取预设
+        if (context?.presets && Array.isArray(context.presets)) {
+            presets = context.presets;
+        } else if (context?.preset_list && Array.isArray(context.preset_list)) {
+            presets = context.preset_list;
+        } else if (context?.prompt_presets && Array.isArray(context.prompt_presets)) {
+            presets = context.prompt_presets;
+        } else if (context?.settings?.presets && Array.isArray(context.settings.presets)) {
+            presets = context.settings.presets;
+        } else {
+            // 尝试从全局对象获取
+            const w = window as any;
+            if (w?.presets && Array.isArray(w.presets)) {
+                presets = w.presets;
+            } else if (w?.preset_list && Array.isArray(w.preset_list)) {
+                presets = w.preset_list;
+            } else if (w?.extension_settings?.presets && Array.isArray(w.extension_settings.presets)) {
+                presets = w.extension_settings.presets;
+            }
+        }
+
+        // 查找目标预设
+        if (presets.length > 0) {
+            targetPreset = presets.find((preset: any) => {
+                if (typeof preset === 'string') {
+                    return preset === presetId;
+                } else if (preset && typeof preset === 'object') {
+                    const id = preset.id || preset.name || preset.title || preset.label;
+                    return id === presetId;
+                }
+                return false;
+            });
+        }
+
+        console.log('🔍 [Preset Content Debug] 找到的目标预设:', targetPreset);
+
+        if (!targetPreset) {
+            throw new Error('未找到指定的预设');
+        }
+
+        // 应用预设到提示词字段
+        const $root = $('#text-image-generator-extension-container');
+
+        // 处理不同的预设数据结构
+        let promptPrefix = '';
+        let negativePrompt = '';
+
+        if (typeof targetPreset === 'string') {
+            // 如果是字符串，直接作为提示词前缀
+            promptPrefix = targetPreset;
+        } else if (targetPreset && typeof targetPreset === 'object') {
+            // 如果是对象，尝试获取各种可能的字段
+            promptPrefix = targetPreset.prompt_prefix || targetPreset.prompt || targetPreset.text || targetPreset.content || '';
+            negativePrompt = targetPreset.negative_prompt || targetPreset.negative || targetPreset.neg_prompt || '';
+        }
+
+        // 应用提示词前缀
+        if (promptPrefix) {
+            $root.find('#sd_prompt_prefix').val(promptPrefix);
+            saveSetting('sd_prompt_prefix', promptPrefix);
+        }
+
+        // 应用负面提示词
+        if (negativePrompt) {
+            $root.find('#sd_negative_prompt').val(negativePrompt);
+            saveSetting('sd_negative_prompt', negativePrompt);
+        }
+
+        toastr.success('预设已应用');
+
+    } catch (error: any) {
+        log.error('加载预设内容失败:', error);
+        toastr.error(`加载预设内容失败: ${error.message || '无法获取预设数据'}`);
+    }
+}
+
+/**
  * 加载设置
  */
 export async function loadSettings(): Promise<void> {
@@ -298,6 +474,28 @@ export async function loadSettings(): Promise<void> {
 
     // 更新数据源设置显示
     updateSourceSettings(settings.source);
+
+    // 加载预设类型设置
+    const presetType = settings.presetType || 'builtin';
+    if (presetType === 'builtin') {
+        $('#preset-tab-builtin').addClass('active');
+        $('#preset-tab-external').removeClass('active');
+        $('#builtin-preset-content').show();
+        $('#external-preset-content').hide();
+    } else {
+        $('#preset-tab-builtin').removeClass('active');
+        $('#preset-tab-external').addClass('active');
+        $('#builtin-preset-content').hide();
+        $('#external-preset-content').show();
+    }
+
+    // 加载外部预设来源设置
+    $('#external-preset-source').val(settings.externalPresetSource || 'sillytavern');
+
+    // 如果选择了外部预设，显示SillyTavern预设容器
+    if (presetType === 'external') {
+        $('#sillytavern-preset-container').show();
+    }
 
     // 加载 ComfyUI URL
     (function () {
@@ -326,6 +524,7 @@ export async function loadSettings(): Promise<void> {
 
     // 加载占位符配置项（作用域限定）
     const $root = $('#text-image-generator-extension-container');
+    // 直接设置选择框的值，即使选项还没有加载
     $root.find('#sd_sampler').val(settings.sd_sampler || '');
     $root.find('#sd_scheduler').val(settings.sd_scheduler || '');
     $root.find('#sd_model').val(settings.sd_model || '');
@@ -354,6 +553,9 @@ export async function loadSettings(): Promise<void> {
     $root.find('#sd_seed').val(settings.sd_seed || -1);
     $root.find('#sd_prompt_prefix').val(settings.sd_prompt_prefix || '');
     $root.find('#sd_negative_prompt').val(settings.sd_negative_prompt || '');
+
+    // 加载ComfyUI选项（参考主站插件的loadSettingOptions）
+    await populateComfyOptions();
 }
 
 /**
@@ -364,13 +566,13 @@ export async function initializeUI(): Promise<void> {
 	// 基础功能开关事件
 	$('#extension-enable-toggle').on('change', function () {
 		const enabled = $(this).is(':checked');
-		console.log('扩展启用状态:', enabled);
+		log.info('扩展启用状态:', enabled);
 		saveSetting('extensionEnabled', enabled);
 
 		// 立即更新所有消息的按钮状态
 		if (enabled) {
 			// 如果启用，重新扫描所有消息并添加按钮
-			console.log('扩展已启用，重新加载插件功能');
+			log.info('扩展已启用，重新加载插件功能');
 			const chatContainer = $('#chat');
 			if (chatContainer.length) {
 				const allMessages = chatContainer.find('.mes');
@@ -388,7 +590,7 @@ export async function initializeUI(): Promise<void> {
 			}
 		} else {
 			// 如果禁用，移除所有生成按钮并清理事件
-			console.log('扩展已禁用，移除所有插件功能');
+			log.info('扩展已禁用，移除所有插件功能');
 			$('.generate-image-btn').remove();
 			// 清理所有生成按钮的点击事件
 			$('.generate-image-btn').off('click');
@@ -398,7 +600,7 @@ export async function initializeUI(): Promise<void> {
 	// 数据源选择
 	$('#source-select').on('change', function () {
 		const source = $(this).val() as string;
-		console.log('数据源:', source);
+		log.info('数据源:', source);
 		saveSetting('source', source);
 		updateSourceSettings(source);
 	});
@@ -415,8 +617,8 @@ export async function initializeUI(): Promise<void> {
 				w.saveSettingsDebounced();
 			}
 		}
-		// URL改变时自动刷新选项
-		populateComfyOptions();
+		// URL改变时不自动刷新选项，需要用户手动点击连接按钮
+		// populateComfyOptions();
         // 同时刷新工作流列表
         updateWorkflowSelect();
 	});
@@ -549,10 +751,7 @@ export async function initializeUI(): Promise<void> {
 		saveSetting('sd_height', widthValue);
 	});
 
-	// 动态加载ComfyUI选项（如果ComfyUI URL已配置）
-	populateComfyOptions();
-
-	// 初始化设置
+	// 初始化设置（loadSettings内部会调用populateComfyOptions）
     await loadSettings();
 
 	// 标签逻辑
@@ -563,5 +762,51 @@ export async function initializeUI(): Promise<void> {
 	$('#tig-tab-api').on('click', function () {
 		$('#tab-basic-content').hide();
 		$('#tab-api-content').show();
+	});
+
+	// 预设选项卡切换逻辑
+	$('#preset-tab-builtin').on('click', function () {
+		$('.preset-tab').removeClass('active');
+		$(this).addClass('active');
+		$('#builtin-preset-content').show();
+		$('#external-preset-content').hide();
+		saveSetting('presetType', 'builtin');
+	});
+
+	$('#preset-tab-external').on('click', function () {
+		$('.preset-tab').removeClass('active');
+		$(this).addClass('active');
+		$('#builtin-preset-content').hide();
+		$('#external-preset-content').show();
+		saveSetting('presetType', 'external');
+		// 切换到外部预设时自动加载SillyTavern预设
+		loadSillyTavernPresets();
+	});
+
+	// 外部预设来源选择
+	$('#external-preset-source').on('change', function () {
+		const source = $(this).val() as string;
+		saveSetting('externalPresetSource', source);
+
+		if (source === 'sillytavern') {
+			$('#sillytavern-preset-container').show();
+			loadSillyTavernPresets();
+		} else {
+			$('#sillytavern-preset-container').hide();
+		}
+	});
+
+	// 刷新SillyTavern预设
+	$('#refresh-sillytavern-presets').on('click', function () {
+		loadSillyTavernPresets();
+	});
+
+	// SillyTavern预设选择
+	$('#sillytavern-preset-select').on('change', function () {
+		const preset = $(this).val() as string;
+		saveSetting('selectedSillyTavernPreset', preset);
+		if (preset) {
+			loadSillyTavernPresetContent(preset);
+		}
 	});
 }

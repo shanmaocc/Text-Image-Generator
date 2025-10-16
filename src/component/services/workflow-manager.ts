@@ -145,6 +145,138 @@ function replaceWorkflowPlaceholders(workflow: any): any {
 }
 
 /**
+ * 快捷替换工作流中的占位符
+ */
+export function quickReplacePlaceholders(): void {
+    const workflowText = $('#sd_comfy_workflow_editor_workflow').val()?.toString() || '';
+
+    if (!workflowText.trim()) {
+        toastr.warning('请先输入工作流内容');
+        return;
+    }
+
+    try {
+        const workflow = JSON.parse(workflowText);
+        const replacedWorkflow = replaceValuesWithPlaceholders(workflow);
+        const newWorkflowText = JSON.stringify(replacedWorkflow, null, 2);
+
+        $('#sd_comfy_workflow_editor_workflow').val(newWorkflowText);
+
+        // 触发占位符检查
+        $('#sd_comfy_workflow_editor_workflow').trigger('input');
+
+        toastr.success('快捷替换完成！');
+    } catch (error) {
+        console.error('快捷替换失败:', error);
+        toastr.error('工作流格式错误，请检查JSON格式');
+    }
+}
+
+/**
+ * 递归替换工作流中的值为占位符
+ */
+function replaceValuesWithPlaceholders(obj: any): any {
+
+    if (typeof obj === 'string') {
+        return obj;
+    }
+
+    if (typeof obj === 'number') {
+        return obj;
+    }
+
+    if (Array.isArray(obj)) {
+        return obj.map(item => replaceValuesWithPlaceholders(item));
+    }
+
+    if (obj && typeof obj === 'object') {
+        const result: any = {};
+
+        for (const [key, value] of Object.entries(obj)) {
+            if (key === 'class_type') {
+                // 保留class_type不变
+                result[key] = value;
+            } else if (key === 'inputs' && typeof value === 'object') {
+                // 处理inputs对象
+                result[key] = replaceInputsWithPlaceholders(value as any);
+            } else {
+                result[key] = replaceValuesWithPlaceholders(value);
+            }
+        }
+
+        return result;
+    }
+
+    return obj;
+}
+
+/**
+ * 替换inputs中的值为占位符
+ */
+function replaceInputsWithPlaceholders(inputs: any): any {
+    const result: any = {};
+
+    for (const [key, value] of Object.entries(inputs)) {
+        // 如果值是数组，说明是关联节点，不应该被替换
+        if (Array.isArray(value)) {
+            result[key] = value;
+            continue;
+        }
+        // 根据字段名判断应该替换为什么占位符
+        if (key === 'text' && typeof value === 'string') {
+            // 文本字段，检查是否包含提示词相关内容
+            if (value.toLowerCase().includes('neg')
+                || value.toLowerCase().includes('negative')
+            || value.toLowerCase().includes('bad')) {
+                result[key] = '%negative_prompt%';
+            } else if (value.toLowerCase().includes('pos')
+                || value.toLowerCase().includes('positive')
+                || value.toLowerCase().includes('best')) {
+                result[key] = '%prompt%';
+            } else {
+                result[key] = '%prompt%';
+            }
+        } else if (key === 'positive' && typeof value === 'string') {
+            // 有些节点可能直接在 inputs 中提供字符串形式的 positive/negative
+            result[key] = '%prompt%';
+        } else if (key === 'negative' && typeof value === 'string') {
+            result[key] = '%negative_prompt%';
+        } else if (key === 'ckpt_name' || key === 'model_name' || key === 'model') {
+            result[key] = '%model%';
+        } else if (key === 'vae_name' || key === 'vae') {
+            result[key] = '%vae%';
+        } else if (key === 'sampler_name' || key === 'sampler') {
+            result[key] = '%sampler%';
+        } else if (key === 'scheduler' || key === 'scheduler_name') {
+            result[key] = '%scheduler%';
+        } else if (key === 'steps') {
+            result[key] = '%steps%';
+        } else if (key === 'cfg' || key === 'cfg_scale') {
+            result[key] = '%scale%';
+        } else if (key === 'denoise' || key === 'denoising_strength') {
+            result[key] = '%denoise%';
+        } else if (key === 'clip_skip') {
+            result[key] = '%clip_skip%';
+        } else if (key === 'width') {
+            result[key] = '%width%';
+        } else if (key === 'height') {
+            result[key] = '%height%';
+        } else if (key === 'seed') {
+            result[key] = '%seed%';
+        } else if (key === 'user_avatar' || key === 'user_image') {
+            result[key] = '%user_avatar%';
+        } else if (key === 'char_avatar' || key === 'char_image') {
+            result[key] = '%char_avatar%';
+        } else {
+            // 其他字段保持原值
+            result[key] = value;
+        }
+    }
+
+    return result;
+}
+
+/**
  * 打开工作流编辑器
  */
 export async function openWorkflowEditor(): Promise<void> {
@@ -249,6 +381,11 @@ export async function openWorkflowEditor(): Promise<void> {
         checkPlaceholders();
         $('#sd_comfy_workflow_editor_workflow').on('input', checkPlaceholders);
 
+        // 快捷替换按钮事件
+        $('#sd_comfy_workflow_editor_quick_replace').on('click', function() {
+            quickReplacePlaceholders();
+        });
+
         if (await popupResult) {
             await saveWorkflowFile(workflowName, workflow);
             toastr.success('工作流保存成功');
@@ -276,6 +413,9 @@ export async function createNewWorkflow(): Promise<void> {
         // 自动选择新创建的工作流
         saveSetting('comfyWorkflowName', fileName);
         $('#comfy-workflow-select').val(fileName);
+
+        // 自动打开工作流编辑器
+        await openWorkflowEditor();
     } catch (error) {
         console.error('Failed to create workflow:', error);
         toastr.error('创建工作流失败');

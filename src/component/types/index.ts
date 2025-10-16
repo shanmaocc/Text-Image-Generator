@@ -45,6 +45,10 @@ export interface UISettings {
     sd_seed: number;
     sd_prompt_prefix: string;
     sd_negative_prompt: string;
+    // 新增预设相关设置
+    presetType?: 'builtin' | 'external';
+    externalPresetSource?: 'sillytavern' | 'other';
+    selectedSillyTavernPreset?: string;
 }
 
 /**
