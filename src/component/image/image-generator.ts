@@ -2,9 +2,9 @@ import { appendMediaToMessage, getRequestHeaders, saveChat } from '@sillytavern/
 import { humanizedDateTime } from '@sillytavern/scripts/RossAscends-mods';
 import getContext from '@sillytavern/scripts/st-context';
 import { saveBase64AsFile } from '@sillytavern/scripts/utils';
+import type { ImageGenerationResult } from '../../@types';
 import { Presets } from '../config';
 import { APP_CONSTANTS } from '../config/constants';
-import log from '../logger';
 import { stopComfyGeneration } from '../services/api-service';
 import { getSettings } from '../services/ui-manager';
 import { getSelectedWorkflow } from '../services/workflow-manager';
@@ -24,7 +24,6 @@ export async function generateComfyPromptFromMessage(
     abortSignal?: AbortSignal
 ): Promise<string> {
     const startTime = Date.now();
-    log.info('Starting AI prompt generation...');
 
     const $message = $(`[mesid="${mesId}"]`);
     const rawText = $message.find('.mes_text').text().trim();
@@ -52,7 +51,7 @@ export async function generateComfyPromptFromMessage(
 
     const endTime = Date.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    log.info(`AI prompt generation completed in ${duration}s`);
+    log.info(`🤖 AI耗时: ${duration}s`);
 
     return cleaned;
 }
@@ -66,7 +65,6 @@ export async function callComfyUIGenerate(
     abortSignal?: AbortSignal
 ): Promise<any> {
     const startTime = Date.now();
-    log.info('Starting image generation...');
 
     const dynamicWorkflow = await getSelectedWorkflow();
 
@@ -75,11 +73,9 @@ export async function callComfyUIGenerate(
     }
 
     const workflowStr = JSON.stringify(dynamicWorkflow);
-
     let finalWorkflow = workflowStr
         .replace(/%prompt%/g, positivePrompt)
         .replace(/%negative_prompt%/g, negativePrompt);
-
     const finalWorkflowObj = JSON.parse(finalWorkflow);
 
     const settings = getSettings();
@@ -131,16 +127,19 @@ export async function callComfyUIGenerate(
     const result = await promptResult.json();
     const endTime = Date.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    log.info(`Image generation completed in ${duration}s`);
+    log.info(`🎨 ComfyUI生图耗时: ${duration}s`);
 
     return result;
 }
 
 /**
- * 保存生成的图片
+ * 保存生成的图片到消息
+ * @param result 图片生成结果
+ * @param positivePrompt 使用的正面提示词
+ * @param mesId 消息 ID
  */
 export async function saveGeneratedImage(
-    result: any,
+    result: ImageGenerationResult,
     positivePrompt: string,
     mesId: string
 ): Promise<void> {
@@ -149,8 +148,8 @@ export async function saveGeneratedImage(
         ? Object.values(context.groups)
               .find((g: any) => g.id === context.groupId)
               ?.name?.toString()
-        : context.characterId
-          ? (context.characters as any)[context.characterId]?.name
+        : context.characterId !== undefined
+          ? context.characters[context.characterId]?.name
           : undefined;
     const filename = `${characterName}_${humanizedDateTime()}`;
     const uploadImagePath = await saveBase64AsFile(
@@ -163,10 +162,18 @@ export async function saveGeneratedImage(
     const message = context.chat[parseInt(mesId)];
     const $message = $(`[mesid="${mesId}"]`);
 
+    // 检查消息是否存在
+    if (!message) {
+        console.error(`消息 ID ${mesId} 不存在`);
+        return;
+    }
+
+    // 确保 extra 对象存在
     if (!message.extra) {
         message.extra = {};
     }
 
+    // 设置图片相关属性（现在有完整的类型提示）
     message.extra.image = uploadImagePath;
     message.extra.title = positivePrompt;
     message.extra.inline_image = true;
@@ -235,10 +242,12 @@ export async function handleStartGeneration($btn: JQuery): Promise<void> {
 
         await saveGeneratedImage(result, positivePrompt, currentMesId);
 
+        isGenerating = false;
         resetButtonState($btn);
     } catch (error) {
         log.error(`消息 ${$btn.data('mes-id')} 图片生成失败:`, error);
 
+        isGenerating = false;
         resetButtonState($btn);
 
         if (error instanceof Error && error.message === '生成被用户中止') {
@@ -254,27 +263,12 @@ export async function handleStartGeneration($btn: JQuery): Promise<void> {
 }
 
 /**
- * 显示中止确认弹窗
- */
-export async function showAbortConfirmation(): Promise<boolean> {
-    const result = confirm('图片正在生成中，是否要中止当前生成？');
-    return result;
-}
-
-/**
  * 处理中止生成图片
  */
 export async function handleAbortGeneration($btn: JQuery): Promise<void> {
-    log.info('Showing abort confirmation dialog...');
-
-    const shouldAbort = await showAbortConfirmation();
-
-    if (shouldAbort) {
-        log.info('User chose to abort generation');
-        await abortCurrentGeneration();
-    } else {
-        log.info('User chose to continue generation');
-    }
+    log.info('Aborting generation...');
+    await abortCurrentGeneration();
+    resetButtonState($btn);
 }
 
 /**

@@ -1,3 +1,4 @@
+import type { UISettings } from '../@types';
 import { AIMessage } from './types';
 
 /**
@@ -59,7 +60,15 @@ export async function callOpenAICompatible(
  */
 export async function callSillyTavernOpenAI(
     messages: AIMessage[],
-    settings: any,
+    settings: Pick<
+        UISettings,
+        | 'openaiApiUrl'
+        | 'openaiApiKey'
+        | 'openaiModel'
+        | 'openaiMaxTokens'
+        | 'openaiTemperature'
+        | 'chat_completion_source'
+    >,
     abortSignal?: AbortSignal
 ): Promise<string> {
     const { getRequestHeaders } = await import('@sillytavern/script');

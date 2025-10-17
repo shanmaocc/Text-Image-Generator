@@ -1,6 +1,6 @@
 // Text-Image-Generator 扩展 - 基础版本
 
-import log from '@/component/logger';
+import log from 'loglevel';
 import { EventManager } from '@/component/services/event-manager';
 import { UIInitializer } from '@/component/services/ui-initializer';
 
@@ -8,7 +8,8 @@ import { UIInitializer } from '@/component/services/ui-initializer';
  * 初始化第三方挂载
  */
 function initThirdPartyMount() {
-    // 日志级别已在logger.ts中根据环境变量设置
+    // 确保日志级别设置正确
+    log.setLevel('info');
     globalThis.log = log;
 }
 

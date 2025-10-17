@@ -1,5 +1,6 @@
 import { syncGenerateButtonStateForMessage } from '../render_image';
-import log from '../logger';
+import getContext from '@sillytavern/scripts/st-context';
+import { getExtensionRoot, findInRoot } from '../../utils/dom-utils';
 import {
     getSettings,
     saveSetting,
@@ -22,8 +23,9 @@ import { loadSillyTavernPresets, loadSillyTavernPresetContent } from './ui-confi
  * 更新数据源设置显示
  */
 export function updateSourceSettings(source: string): void {
-    $('.source-settings').hide();
-    $('#comfy-source-settings').show();
+    const $root = getExtensionRoot();
+    $root.find('.source-settings').hide();
+    $root.find('#comfy-source-settings').show();
 }
 
 /**
@@ -34,7 +36,8 @@ export function setupRangeSlider(rangeId: string, valueId: string, settingKey: s
 }
 
 export function setupRangeSliderScoped(rangeId: string, valueId: string, settingKey: string): void {
-    const $root = $('#text-image-generator-extension-container');
+    // Use the extension root for delegated event binding
+    const $root = getExtensionRoot();
     const rangeInput = $root.find(`#${rangeId}`);
     const valueInput = $root.find(`#${valueId}`);
 
@@ -61,52 +64,50 @@ export function setupRangeSliderScoped(rangeId: string, valueId: string, setting
  */
 export async function loadSettings(): Promise<void> {
     const settings = getSettings();
+    const $root = getExtensionRoot();
 
-    $('#extension-enable-toggle').prop('checked', settings.extensionEnabled);
-    $('#source-select').val(settings.source);
+    $root.find('#extension-enable-toggle').prop('checked', settings.extensionEnabled);
+    $root.find('#source-select').val(settings.source);
 
     updateSourceSettings(settings.source);
 
     const presetType = settings.presetType || 'builtin';
     if (presetType === 'builtin') {
-        $('#preset-tab-builtin').addClass('active');
-        $('#preset-tab-external').removeClass('active');
-        $('#builtin-preset-content').show();
-        $('#external-preset-content').hide();
+        $root.find('#preset-tab-builtin').addClass('active');
+        $root.find('#preset-tab-external').removeClass('active');
+        $root.find('#builtin-preset-content').show();
+        $root.find('#external-preset-content').hide();
     } else {
-        $('#preset-tab-builtin').removeClass('active');
-        $('#preset-tab-external').addClass('active');
-        $('#builtin-preset-content').hide();
-        $('#external-preset-content').show();
+        $root.find('#preset-tab-builtin').removeClass('active');
+        $root.find('#preset-tab-external').addClass('active');
+        $root.find('#builtin-preset-content').hide();
+        $root.find('#external-preset-content').show();
     }
 
-    $('#external-preset-source').val(settings.externalPresetSource || 'sillytavern');
+    $root.find('#external-preset-source').val(settings.externalPresetSource || 'sillytavern');
 
     if (presetType === 'external') {
-        $('#sillytavern-preset-container').show();
+        $root.find('#sillytavern-preset-container').show();
     }
 
-    (function () {
-        const w = window as any;
-        const siteUrl = w?.extension_settings?.sd?.comfy_url;
-        const finalUrl = siteUrl || settings.comfyUrl || DEFAULT_COMFY_URL;
-        $('#comfy-url-input').val(finalUrl);
-        saveSetting('comfyUrl', finalUrl);
-    })();
+    const ctx = getContext();
+    const siteUrl = ctx.extensionSettings?.sd?.comfy_url;
+    const finalUrl = siteUrl || settings.comfyUrl || DEFAULT_COMFY_URL;
+    $root.find('#comfy-url-input').val(finalUrl);
+    saveSetting('comfyUrl', finalUrl);
 
-    $('#openai-provider-select').val(settings.openaiProvider || 'openai-compatible');
-    $('#openai-api-url').val(settings.openaiApiUrl || '');
-    $('#openai-api-key').val(settings.openaiApiKey || '');
-    $('#openai-max-tokens').val(settings.openaiMaxTokens ?? 65500);
-    $('#openai-temperature').val(settings.openaiTemperature ?? 1.2);
-    $('#openai-context-count').val(settings.openaiContextCount ?? 2);
+    $root.find('#openai-provider-select').val(settings.openaiProvider || 'openai-compatible');
+    $root.find('#openai-api-url').val(settings.openaiApiUrl || '');
+    $root.find('#openai-api-key').val(settings.openaiApiKey || '');
+    $root.find('#openai-max-tokens').val(settings.openaiMaxTokens ?? 65500);
+    $root.find('#openai-temperature').val(settings.openaiTemperature ?? 1.2);
+    $root.find('#openai-context-count').val(settings.openaiContextCount ?? 2);
     populateOpenAIModels(settings);
 
     await updateWorkflowSelect();
     const selected = settings.comfyWorkflowName || '';
-    if (selected) $('#comfy-workflow-select').val(selected);
+    if (selected) $root.find('#comfy-workflow-select').val(selected);
 
-    const $root = $('#text-image-generator-extension-container');
     $root.find('#sd_sampler').val(settings.sd_sampler || '');
     $root.find('#sd_scheduler').val(settings.sd_scheduler || '');
     $root.find('#sd_model').val(settings.sd_model || '');
@@ -144,7 +145,9 @@ export async function loadSettings(): Promise<void> {
  * 初始化界面功能
  */
 export async function initializeUI(): Promise<void> {
-    $('#extension-enable-toggle').on('change', function () {
+    const $root = getExtensionRoot();
+
+    $root.on('change', '#extension-enable-toggle', function () {
         const enabled = $(this).is(':checked');
         log.info('Extension enabled:', enabled);
         saveSetting('extensionEnabled', enabled);
@@ -167,49 +170,47 @@ export async function initializeUI(): Promise<void> {
                 });
             }
         } else {
-            $('.generate-image-btn').remove();
-            $('.generate-image-btn').off('click');
+            $(document).find('.generate-image-btn').remove();
+            $(document).off('click', '.generate-image-btn');
         }
     });
 
-    $('#source-select').on('change', function () {
+    $root.on('change', '#source-select', function () {
         const source = $(this).val() as string;
         saveSetting('source', source);
         updateSourceSettings(source);
     });
 
-    $('#comfy-url-input').on('input', function () {
+    $root.on('input', '#comfy-url-input', function () {
         const url = ($(this).val() as string) || DEFAULT_COMFY_URL;
         saveSetting('comfyUrl', url);
-        const w = window as any;
-        if (w.extension_settings && w.extension_settings.sd) {
-            w.extension_settings.sd.comfy_url = url;
-            if (typeof w.saveSettingsDebounced === 'function') {
-                w.saveSettingsDebounced();
-            }
+        const ctx = getContext();
+        if (ctx.extensionSettings?.sd) {
+            ctx.extensionSettings.sd.comfy_url = url;
+            ctx.saveSettingsDebounced();
         }
         updateWorkflowSelect();
     });
 
-    $('#comfy-validate-btn').on('click', function () {
+    $root.on('click', '#comfy-validate-btn', function () {
         validateComfyUrl();
     });
 
-    $('#openai-provider-select').on('change', function () {
+    $root.on('change', '#openai-provider-select', function () {
         const provider = $(this).val() as string;
         saveSetting('openaiProvider', provider);
     });
-    $('#openai-api-url').on('input', function () {
+    $root.on('input', '#openai-api-url', function () {
         const url = ($(this).val() as string) || '';
         saveSetting('openaiApiUrl', url);
     });
-    $('#openai-api-key').on('input', function () {
+    $root.on('input', '#openai-api-key', function () {
         const key = ($(this).val() as string) || '';
         saveSetting('openaiApiKey', key);
     });
-    $('#openai-api-key-toggle').on('click', function () {
-        const input = $('#openai-api-key');
-        const icon = $('#openai-api-key-toggle i');
+    $root.on('click', '#openai-api-key-toggle', function () {
+        const input = $root.find('#openai-api-key');
+        const icon = $root.find('#openai-api-key-toggle i');
         const currentType = input.attr('type');
         if (currentType === 'password') {
             input.attr('type', 'text');
@@ -219,56 +220,55 @@ export async function initializeUI(): Promise<void> {
             icon.removeClass('fa-eye-slash').addClass('fa-eye');
         }
     });
-    $('#openai-model-select').on('change', function () {
+    $root.on('change', '#openai-model-select', function () {
         const model = $(this).val() as string;
         saveSetting('openaiModel', model);
     });
-    $('#openai-refresh-models').on('click', function () {
+    $root.on('click', '#openai-refresh-models', function () {
         refreshOpenAIModels();
     });
-    $('#openai-max-tokens').on('input', function () {
+    $root.on('input', '#openai-max-tokens', function () {
         const v = parseInt($(this).val() as string) || 0;
         saveSetting('openaiMaxTokens', v);
     });
-    $('#openai-temperature').on('input', function () {
+    $root.on('input', '#openai-temperature', function () {
         const v = parseFloat($(this).val() as string) || 0;
         saveSetting('openaiTemperature', v);
     });
-    $('#openai-context-count').on('input', function () {
+    $root.on('input', '#openai-context-count', function () {
         const v = parseInt($(this).val() as string) || 0;
         saveSetting('openaiContextCount', v);
     });
 
-    $('#comfy-open-workflow-editor').on('click', function () {
+    $root.on('click', '#comfy-open-workflow-editor', function () {
         openWorkflowEditor();
     });
 
-    $('#comfy-new-workflow').on('click', function () {
+    $root.on('click', '#comfy-new-workflow', function () {
         createNewWorkflow();
     });
 
-    $('#comfy-delete-workflow').on('click', function () {
+    $root.on('click', '#comfy-delete-workflow', function () {
         deleteWorkflow();
     });
-    $('#comfy-workflow-select').on('change', function () {
+    $root.on('change', '#comfy-workflow-select', function () {
         const name = ($(this).val() as string) || '';
         saveSetting('comfyWorkflowName', name);
     });
 
-    const $root = $('#text-image-generator-extension-container');
-    $root.find('#sd_sampler').on('change', function () {
+    $root.on('change', '#sd_sampler', function () {
         saveSetting('sd_sampler', $(this).val());
     });
-    $root.find('#sd_scheduler').on('change', function () {
+    $root.on('change', '#sd_scheduler', function () {
         saveSetting('sd_scheduler', $(this).val());
     });
-    $root.find('#sd_model').on('change', function () {
+    $root.on('change', '#sd_model', function () {
         saveSetting('sd_model', $(this).val());
     });
-    $root.find('#sd_vae').on('change', function () {
+    $root.on('change', '#sd_vae', function () {
         saveSetting('sd_vae', $(this).val());
     });
-    $root.find('#sd_resolution').on('change', function () {
+    $root.on('change', '#sd_resolution', function () {
         const resolution = $(this).val() as string;
         saveSetting('sd_resolution', resolution);
 
@@ -299,13 +299,16 @@ export async function initializeUI(): Promise<void> {
         };
 
         if (resolution in widthHeightMap) {
-            const [width, height] = widthHeightMap[resolution];
-            $root.find('#sd_width').val(width);
-            $root.find('#sd_width_value').val(width);
-            $root.find('#sd_height').val(height);
-            $root.find('#sd_height_value').val(height);
-            saveSetting('sd_width', width);
-            saveSetting('sd_height', height);
+            const dimensions = widthHeightMap[resolution];
+            if (dimensions) {
+                const [width, height] = dimensions;
+                $root.find('#sd_width').val(width);
+                $root.find('#sd_width_value').val(width);
+                $root.find('#sd_height').val(height);
+                $root.find('#sd_height_value').val(height);
+                saveSetting('sd_width', width);
+                saveSetting('sd_height', height);
+            }
         }
     });
 
@@ -320,77 +323,92 @@ export async function initializeUI(): Promise<void> {
     );
     setupRangeSliderScoped('sd_clip_skip', 'sd_clip_skip_value', 'sd_clip_skip');
 
-    $('#sd_seed').on('input', function () {
+    $root.on('input', '#sd_seed', function () {
         saveSetting('sd_seed', parseInt($(this).val() as string) || -1);
     });
 
-    $('#sd_prompt_prefix').on('input', function () {
+    $root.on('input', '#sd_prompt_prefix', function () {
         saveSetting('sd_prompt_prefix', $(this).val() || '');
     });
 
-    $('#sd_negative_prompt').on('input', function () {
+    $root.on('input', '#sd_negative_prompt', function () {
         saveSetting('sd_negative_prompt', $(this).val() || '');
     });
 
-    $('#save-style-btn').on('click', function () {
+    $root.on('click', '#save-style-btn', function () {
         saveStyle();
     });
 
-    $('#delete-style-btn').on('click', function () {
+    $root.on('click', '#delete-style-btn', function () {
         deleteStyle();
     });
 
-    $('#style-select').on('change', function () {
+    $root.on('change', '#style-select', function () {
         const selectedStyle = $(this).val() as string;
         if (selectedStyle) {
             const styles = require('./ui-config-styles').getStyles();
             const style = styles[selectedStyle];
             if (style) {
-                $('#prompt-prefix-textarea').val(style.promptPrefix);
-                $('#negative-prompt-textarea').val(style.negativePrompt);
+                $root.find('#prompt-prefix-textarea').val(style.promptPrefix);
+                $root.find('#negative-prompt-textarea').val(style.negativePrompt);
             }
         }
     });
 
     updateStyleSelect();
 
-    $('#preset-tab-builtin').on('click', function () {
+    $root.on('click', '#preset-tab-builtin', function () {
         $(this).addClass('active');
-        $('#preset-tab-external').removeClass('active');
-        $('#builtin-preset-content').show();
-        $('#external-preset-content').hide();
+        $root.find('#preset-tab-external').removeClass('active');
+        $root.find('#builtin-preset-content').show();
+        $root.find('#external-preset-content').hide();
         saveSetting('presetType', 'builtin');
     });
 
-    $('#preset-tab-external').on('click', function () {
+    $root.on('click', '#preset-tab-external', function () {
         $(this).addClass('active');
-        $('#preset-tab-builtin').removeClass('active');
-        $('#builtin-preset-content').hide();
-        $('#external-preset-content').show();
+        $root.find('#preset-tab-builtin').removeClass('active');
+        $root.find('#builtin-preset-content').hide();
+        $root.find('#external-preset-content').show();
         saveSetting('presetType', 'external');
-        $('#sillytavern-preset-container').show();
+        $root.find('#sillytavern-preset-container').show();
     });
 
-    $('#external-preset-source').on('change', function () {
+    $root.on('change', '#external-preset-source', function () {
         const source = $(this).val() as string;
         saveSetting('externalPresetSource', source);
         if (source === 'sillytavern') {
-            $('#sillytavern-preset-container').show();
+            $root.find('#sillytavern-preset-container').show();
         } else {
-            $('#sillytavern-preset-container').hide();
+            $root.find('#sillytavern-preset-container').hide();
         }
     });
 
-    $('#refresh-sillytavern-presets').on('click', function () {
+    $root.on('click', '#refresh-sillytavern-presets', function () {
         loadSillyTavernPresets();
     });
 
-    $('#sillytavern-preset-select').on('change', function () {
-        const presetId = $(this).val() as string;
+    $root.on('change', '#sillytavern-preset-select', function () {
+        const presetId = ($(this).val() as string) || '';
         saveSetting('selectedSillyTavernPreset', presetId);
         if (presetId) {
             loadSillyTavernPresetContent(presetId);
         }
+    });
+
+    // 主tab切换功能（委托绑定，避免渲染时序问题）
+    $root.on('click', '#tig-tab-basic', function () {
+        $(this).addClass('active');
+        $root.find('#tig-tab-api').removeClass('active');
+        $root.find('#tab-basic-content').show();
+        $root.find('#tab-api-content').hide();
+    });
+
+    $root.on('click', '#tig-tab-api', function () {
+        $(this).addClass('active');
+        $root.find('#tig-tab-basic').removeClass('active');
+        $root.find('#tab-basic-content').hide();
+        $root.find('#tab-api-content').show();
     });
 
     await loadSettings();

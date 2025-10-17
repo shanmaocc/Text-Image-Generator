@@ -2,6 +2,8 @@
  * 样式管理模块
  */
 
+import { getExtensionRoot } from '../../utils/dom-utils';
+
 /**
  * 保存样式
  */
@@ -9,8 +11,9 @@ export function saveStyle(): void {
     const styleName = prompt('请输入样式名称:');
     if (!styleName) return;
 
-    const promptPrefix = $('#prompt-prefix-textarea').val() as string;
-    const negativePrompt = $('#negative-prompt-textarea').val() as string;
+    const $root = getExtensionRoot();
+    const promptPrefix = $root.find('#prompt-prefix-textarea').val() as string;
+    const negativePrompt = $root.find('#negative-prompt-textarea').val() as string;
 
     const styles = getStyles();
     styles[styleName] = {
@@ -27,7 +30,8 @@ export function saveStyle(): void {
  * 删除样式
  */
 export function deleteStyle(): void {
-    const selectedStyle = $('#style-select').val() as string;
+    const $root = getExtensionRoot();
+    const selectedStyle = $root.find('#style-select').val() as string;
     if (!selectedStyle) {
         alert('请先选择一个样式');
         return;
@@ -55,7 +59,8 @@ export function getStyles(): Record<string, any> {
  */
 export function updateStyleSelect(): void {
     const styles = getStyles();
-    const styleSelect = $('#style-select');
+    const $root = getExtensionRoot();
+    const styleSelect = $root.find('#style-select');
 
     styleSelect.empty();
     styleSelect.append('<option value="">无样式</option>');

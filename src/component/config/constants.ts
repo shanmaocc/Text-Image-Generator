@@ -17,15 +17,17 @@ export const APP_CONSTANTS = {
         extensionEnabled: true,
         source: 'comfy',
         openaiProvider: 'openai-compatible',
-        openaiMaxTokens: parseInt(import.meta.env.VITE_DEFAULT_OPENAI_MAX_TOKENS) || 65500,
-        openaiTemperature: parseFloat(import.meta.env.VITE_DEFAULT_OPENAI_TEMPERATURE) || 1.2,
-        openaiContextCount: parseInt(import.meta.env.VITE_DEFAULT_OPENAI_CONTEXT_COUNT) || 2,
+        openaiMaxTokens:
+            parseInt(import.meta.env.VITE_DEFAULT_OPENAI_MAX_TOKENS || '65500') || 65500,
+        openaiTemperature:
+            parseFloat(import.meta.env.VITE_DEFAULT_OPENAI_TEMPERATURE || '1.2') || 1.2,
+        openaiContextCount: parseInt(import.meta.env.VITE_DEFAULT_OPENAI_CONTEXT_COUNT || '2') || 2,
         sd_resolution: 'sd_res_1024x1024',
         sd_steps: 20,
         sd_scale: 7,
         sd_width: 1024,
         sd_height: 1024,
-        sd_denoising_strength: 0.7,
+        sd_denoising_strength: 1,
         sd_clip_skip: 1,
         sd_seed: -1,
         sd_prompt_prefix:

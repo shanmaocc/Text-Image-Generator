@@ -1,6 +1,7 @@
 import { getRequestHeaders } from '@sillytavern/script';
-import log from '../logger';
+// 使用全局 log 对象，无需导入
 import { getSettings, saveSetting, UISettings } from '../services/ui-manager';
+import { getExtensionRoot } from '../../utils/dom-utils';
 
 /**
  * 刷新OpenAI模型列表
@@ -31,11 +32,12 @@ export async function refreshOpenAIModels(): Promise<void> {
             .filter((v: any) => typeof v === 'string');
 
         const metaText = `已加载 ${modelIds.length} 个可用模型`;
-        const select = $('#openai-model-select');
+        const $root = getExtensionRoot();
+        const select = $root.find('#openai-model-select');
         select.empty();
         select.append('<option value="">-- 选择模型 --</option>');
         modelIds.forEach((id: string) => select.append(`<option value="${id}">${id}</option>`));
-        $('#openai-models-meta').text(metaText);
+        $root.find('#openai-models-meta').text(metaText);
 
         const cur = settings.openaiModel;
         if (cur) select.val(cur);
@@ -51,7 +53,8 @@ export async function refreshOpenAIModels(): Promise<void> {
  * 填充OpenAI模型下拉框
  */
 export function populateOpenAIModels(settings: UISettings): void {
-    const select = $('#openai-model-select');
+    const $root = getExtensionRoot();
+    const select = $root.find('#openai-model-select');
     if (!select.children().length) {
         select.append('<option value="">-- 选择模型 --</option>');
     }
@@ -63,5 +66,5 @@ export function populateOpenAIModels(settings: UISettings): void {
         }
         select.val(settings.openaiModel);
     }
-    $('#openai-models-meta').text('已加载 0 个可用模型');
+    $root.find('#openai-models-meta').text('已加载 0 个可用模型');
 }

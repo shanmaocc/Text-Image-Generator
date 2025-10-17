@@ -2,7 +2,7 @@
 import { APP_CONSTANTS } from '../config/constants';
 import { ComfyUIOption, UISettings } from '../types';
 import { errorHandler } from '../utils/error-handler';
-import log from '../logger';
+// 使用全局 log 对象，无需导入
 
 // 导出类型供其他模块使用
 export type { UISettings } from '../types';
@@ -64,7 +64,7 @@ export function getSettings(): UISettings {
 /**
  * 保存设置
  */
-export function saveSetting(key: string, value: any): void {
+export function saveSetting(key: string, value: unknown): void {
     try {
         const settings = getSettings();
         (settings as any)[key] = value;

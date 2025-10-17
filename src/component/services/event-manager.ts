@@ -1,4 +1,4 @@
-import log from '../logger';
+// 使用全局 log 对象，无需导入
 import {
     handleChatLoaded,
     handleGenerateImageButtonClick,

@@ -2,7 +2,7 @@
 import { getRequestHeaders } from '@sillytavern/script';
 import { ComfyUIOption, ComfyUISettings } from '../types';
 import { errorHandler, ErrorHandler } from '../utils/error-handler';
-import log from '../logger';
+// 使用全局 log 对象，无需导入
 
 /**
  * 通用ComfyUI API调用函数
@@ -129,9 +129,9 @@ const CACHE_KEYS = {
 };
 
 /**
- * 缓存过期时间（从环境变量读取，默认5分钟）
+ * 缓存过期时间（默认5分钟）
  */
-const CACHE_EXPIRE_TIME = parseInt(import.meta.env.VITE_CACHE_EXPIRE_TIME) || 5 * 60 * 1000;
+const CACHE_EXPIRE_TIME = 5 * 60 * 1000;
 
 /**
  * 检查缓存是否有效

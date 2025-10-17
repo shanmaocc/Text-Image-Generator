@@ -1,5 +1,10 @@
-// 工作流管理服务模块
+/**
+ * 工作流管理服务模块
+ * 负责 ComfyUI 工作流的加载、保存、编辑和占位符替换
+ */
 import { Popup, POPUP_TYPE } from '@sillytavern/scripts/popup';
+import type { ComfyWorkflow, WorkflowPlaceholder } from '../../@types';
+import { getExtensionRoot } from '../../utils/dom-utils';
 import {
     deleteWorkflowFile,
     loadWorkflowFile,
@@ -29,8 +34,9 @@ const CUSTOM_PH_STORAGE_KEY = 'textToPicCustomPlaceholders';
 
 /**
  * 获取自定义占位符
+ * @returns 自定义占位符数组
  */
-function getCustomPlaceholders(): Array<{ find: string; replace: string }> {
+function getCustomPlaceholders(): WorkflowPlaceholder[] {
     const raw = localStorage.getItem(CUSTOM_PH_STORAGE_KEY);
     try {
         return raw ? JSON.parse(raw) : [];
@@ -41,18 +47,21 @@ function getCustomPlaceholders(): Array<{ find: string; replace: string }> {
 
 /**
  * 保存自定义占位符
+ * @param placeholders 占位符数组
  */
-function saveCustomPlaceholders(placeholders: Array<{ find: string; replace: string }>): void {
+function saveCustomPlaceholders(placeholders: WorkflowPlaceholder[]): void {
     localStorage.setItem(CUSTOM_PH_STORAGE_KEY, JSON.stringify(placeholders));
 }
 
 /**
  * 更新工作流选择框
+ * 从服务器加载工作流列表并填充到下拉框中
  */
 export async function updateWorkflowSelect(): Promise<void> {
     try {
         const workflows = await loadWorkflowList();
-        const select = $('#comfy-workflow-select');
+        const $root = getExtensionRoot();
+        const select = $root.find('#comfy-workflow-select');
         select.empty();
         select.append('<option value="">-- 未选择 --</option>');
 
@@ -69,8 +78,9 @@ export async function updateWorkflowSelect(): Promise<void> {
             select.val(settings.comfyWorkflowName);
         }
     } catch (error) {
-        console.error('Failed to load workflows:', error);
-        const select = $('#comfy-workflow-select');
+        log.error('加载工作流列表失败:', error);
+        const $root = getExtensionRoot();
+        const select = $root.find('#comfy-workflow-select');
         select.empty();
         select.append('<option value="">-- 加载工作流失败 --</option>');
     }
@@ -78,8 +88,9 @@ export async function updateWorkflowSelect(): Promise<void> {
 
 /**
  * 获取当前选中的工作流
+ * @returns 处理后的工作流 JSON 对象（已替换占位符），失败返回 null
  */
-export async function getSelectedWorkflow(): Promise<any> {
+export async function getSelectedWorkflow(): Promise<ComfyWorkflow | null> {
     const settings = getSettings();
     const workflowName = settings.comfyWorkflowName;
 
@@ -102,8 +113,10 @@ export async function getSelectedWorkflow(): Promise<any> {
 
 /**
  * 替换工作流中的占位符
+ * @param workflow 原始工作流对象
+ * @returns 替换后的工作流对象
  */
-function replaceWorkflowPlaceholders(workflow: any): any {
+function replaceWorkflowPlaceholders(workflow: ComfyWorkflow): ComfyWorkflow {
     const settings = getSettings();
 
     // 深拷贝工作流以避免修改原始数据
@@ -192,7 +205,7 @@ export function quickReplacePlaceholders(): void {
 /**
  * 递归替换工作流中的值为占位符
  */
-function replaceValuesWithPlaceholders(obj: any, nodeId?: string): any {
+function replaceValuesWithPlaceholders(obj: unknown, nodeId?: string): unknown {
     if (typeof obj === 'string') {
         return obj;
     }
@@ -214,7 +227,7 @@ function replaceValuesWithPlaceholders(obj: any, nodeId?: string): any {
                 result[key] = value;
             } else if (key === 'inputs' && typeof value === 'object') {
                 // 处理inputs对象，传递节点信息
-                const classType = obj['class_type'] || '';
+                const classType = (obj as any)['class_type'] || '';
                 result[key] = replaceInputsWithPlaceholders(value as any, classType, nodeId);
             } else {
                 result[key] = replaceValuesWithPlaceholders(value, key);
@@ -234,8 +247,8 @@ function replaceInputsWithPlaceholders(
     inputs: any,
     classType: string = '',
     nodeId: string = ''
-): any {
-    const result: any = {};
+): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
 
     // 特殊节点类型：放大相关节点，这些节点应该保留特定参数的原始值
     const isUpscaleNode = [
@@ -270,13 +283,7 @@ function replaceInputsWithPlaceholders(
             }
         }
 
-        // 🔧 对于KSampler节点，如果去噪值为1（完全去噪），保留原值
-        if (classType === 'KSampler' && (key === 'denoise' || key === 'denoising_strength')) {
-            if (typeof value === 'number' && value === 1) {
-                result[key] = value; // 保留原值1，不替换为%denoise%
-                continue;
-            }
-        }
+        // 去噪值应该使用用户界面设置的值，不需要特殊处理
 
         // 根据字段名判断应该替换为什么占位符
         if (key === 'text' && typeof value === 'string') {

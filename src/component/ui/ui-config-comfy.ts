@@ -1,4 +1,3 @@
-import log from '../logger';
 import {
     loadAllComfyOptions,
     validateComfyConnection,
@@ -12,6 +11,7 @@ import {
     saveSetting,
 } from '../services/ui-manager';
 import { updateWorkflowSelect } from '../services/workflow-manager';
+import { getExtensionRoot } from '../../utils/dom-utils';
 
 const DEFAULT_COMFY_URL = 'http://127.0.0.1:8188';
 
@@ -34,7 +34,7 @@ export async function populateComfyOptions(): Promise<void> {
         populateSelectOptions('sd_scheduler', schedulers, '无可用调度器', settings.sd_scheduler);
         populateSelectOptions('sd_vae', vaes, '无可用VAE', settings.sd_vae);
 
-        const $root = $('#text-image-generator-extension-container');
+        const $root = getExtensionRoot();
         const resolutionSelect = $root.find('#sd_resolution');
         resolutionSelect.empty();
         FIXED_OPTIONS.resolutions.forEach(option => {
@@ -54,12 +54,13 @@ export async function populateComfyOptions(): Promise<void> {
  * 测试 ComfyUI 连接
  */
 export async function validateComfyUrl(): Promise<void> {
-    let url = ($('#comfy-url-input').val() as string) || DEFAULT_COMFY_URL;
+    const $root = getExtensionRoot();
+    let url = ($root.find('#comfy-url-input').val() as string) || DEFAULT_COMFY_URL;
 
     clearOptionsCache();
     url = normalizeComfyBaseUrl(url);
-    const button = $('#comfy-validate-btn');
-    const status = $('#comfy-connection-status');
+    const button = $root.find('#comfy-validate-btn');
+    const status = $root.find('#comfy-connection-status');
     const originalText = button.text();
 
     button.text('连接中...').prop('disabled', true);
