@@ -9,7 +9,7 @@ import { stopComfyGeneration } from '../services/api-service';
 import { getSettings } from '../services/ui-manager';
 import { getSelectedWorkflow } from '../services/workflow-manager';
 import { AIMessage } from '../types';
-import { callSillyTavernOpenAI } from '../utils';
+import { callSillyTavernOpenAI } from '../utils/openai-client';
 import { createStopButtonHTML, resetButtonState } from './button-manager';
 
 // 全局变量用于跟踪生成状态
@@ -51,7 +51,7 @@ export async function generateComfyPromptFromMessage(
 
     const endTime = Date.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    log.info(`🤖 AI耗时: ${duration}s`);
+    logger.info(`🤖 AI耗时: ${duration}s`);
 
     return cleaned;
 }
@@ -63,7 +63,7 @@ export async function callComfyUIGenerate(
     positivePrompt: string,
     negativePrompt: string,
     abortSignal?: AbortSignal
-): Promise<any> {
+): Promise<ImageGenerationResult> {
     const startTime = Date.now();
 
     const dynamicWorkflow = await getSelectedWorkflow();
@@ -73,7 +73,7 @@ export async function callComfyUIGenerate(
     }
 
     const workflowStr = JSON.stringify(dynamicWorkflow);
-    let finalWorkflow = workflowStr
+    const finalWorkflow = workflowStr
         .replace(/%prompt%/g, positivePrompt)
         .replace(/%negative_prompt%/g, negativePrompt);
     const finalWorkflowObj = JSON.parse(finalWorkflow);
@@ -96,7 +96,7 @@ export async function callComfyUIGenerate(
         const proxyUrl = `/proxy/${encodeURIComponent(testUrl)}`;
         await fetch(proxyUrl, { method: 'GET' });
     } catch (error) {
-        log.error(`ComfyUI连接测试失败:`, error);
+        logger.error(`ComfyUI连接测试失败:`, error);
     }
 
     const fetchOptions: RequestInit = {
@@ -111,14 +111,14 @@ export async function callComfyUIGenerate(
 
     if (!promptResult.ok) {
         const text = await promptResult.text();
-        log.error(`ComfyUI API错误 - 状态码: ${promptResult.status}`);
-        log.error(`错误响应内容: ${text}`);
+        logger.error(`ComfyUI API错误 - 状态码: ${promptResult.status}`);
+        logger.error(`错误响应内容: ${text}`);
 
         try {
             const errorData = JSON.parse(text);
-            log.error(`解析后的错误数据:`, errorData);
+            logger.error(`解析后的错误数据:`, errorData);
         } catch (e) {
-            log.error(`无法解析错误响应为JSON: ${e}`);
+            logger.error(`无法解析错误响应为JSON: ${e}`);
         }
 
         throw new Error(`ComfyUI API错误 (${promptResult.status}): ${text}`);
@@ -127,7 +127,7 @@ export async function callComfyUIGenerate(
     const result = await promptResult.json();
     const endTime = Date.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    log.info(`🎨 ComfyUI生图耗时: ${duration}s`);
+    logger.info(`🎨 ComfyUI生图耗时: ${duration}s`);
 
     return result;
 }
@@ -144,27 +144,27 @@ export async function saveGeneratedImage(
     mesId: string
 ): Promise<void> {
     const context = getContext();
-    const characterName: string = context.groupId
+    const characterName: string | undefined = context.groupId
         ? Object.values(context.groups)
-              .find((g: any) => g.id === context.groupId)
+              .find((g: { id?: string; name?: string }) => g.id === context.groupId)
               ?.name?.toString()
         : context.characterId !== undefined
           ? context.characters[context.characterId]?.name
           : undefined;
-    const filename = `${characterName}_${humanizedDateTime()}`;
+    const filename = `${characterName || 'generated'}_${humanizedDateTime()}`;
     const uploadImagePath = await saveBase64AsFile(
         result.data,
-        characterName,
+        characterName || '',
         filename,
         result.format
     );
 
-    const message = context.chat[parseInt(mesId)];
+    const message = context.chat[parseInt(mesId, 10)];
     const $message = $(`[mesid="${mesId}"]`);
 
     // 检查消息是否存在
     if (!message) {
-        console.error(`消息 ID ${mesId} 不存在`);
+        logger.error(`消息 ID ${mesId} 不存在`);
         return;
     }
 
@@ -193,7 +193,7 @@ export async function handleStartGeneration($btn: JQuery): Promise<void> {
     const $btnText = $btn.find('.btn-text');
     const $btnLoading = $btn.find('.btn-loading');
 
-    log.info('Starting image generation process...');
+    logger.info('Starting image generation process...');
 
     isGenerating = true;
     currentGenerationAbortController = new AbortController();
@@ -208,7 +208,7 @@ export async function handleStartGeneration($btn: JQuery): Promise<void> {
     $btn.after($stopButton);
 
     $stopButton.on('click', async function () {
-        log.info('停止按钮被点击');
+        logger.info('停止按钮被点击');
         await abortCurrentGeneration();
         $stopButton.remove();
     });
@@ -245,7 +245,7 @@ export async function handleStartGeneration($btn: JQuery): Promise<void> {
         isGenerating = false;
         resetButtonState($btn);
     } catch (error) {
-        log.error(`消息 ${$btn.data('mes-id')} 图片生成失败:`, error);
+        logger.error(`消息 ${$btn.data('mes-id')} 图片生成失败:`, error);
 
         isGenerating = false;
         resetButtonState($btn);
@@ -266,7 +266,7 @@ export async function handleStartGeneration($btn: JQuery): Promise<void> {
  * 处理中止生成图片
  */
 export async function handleAbortGeneration($btn: JQuery): Promise<void> {
-    log.info('Aborting generation...');
+    logger.info('Aborting generation...');
     await abortCurrentGeneration();
     resetButtonState($btn);
 }
@@ -285,9 +285,9 @@ export async function abortCurrentGeneration(): Promise<void> {
         if (settings.comfyUrl) {
             try {
                 await stopComfyGeneration({ comfyUrl: settings.comfyUrl });
-                log.info('ComfyUI generation stopped successfully');
+                logger.info('ComfyUI generation stopped successfully');
             } catch (error) {
-                log.info('ComfyUI stop request completed');
+                logger.info('ComfyUI stop request completed');
             }
         }
 
@@ -299,7 +299,7 @@ export async function abortCurrentGeneration(): Promise<void> {
 
         $('.stop-image-btn').remove();
     } catch (error) {
-        log.error('Error during abort:', error);
+        logger.error('Error during abort:', error);
         isGenerating = false;
         $('.generate-image-btn.generating').each(function () {
             resetButtonState($(this));

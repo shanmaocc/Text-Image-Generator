@@ -74,7 +74,7 @@ export interface OpenAICompatibleOptions {
 /**
  * 工作流存储类型
  */
-export type WorkflowStore = Record<string, any>; // name -> workflow JSON object
+export type WorkflowStore = Record<string, unknown>; // name -> workflow JSON object
 
 /**
  * 样式接口
@@ -103,7 +103,7 @@ export interface ResolutionOption {
 export interface ErrorInfo {
     message: string;
     code?: string;
-    details?: any;
+    details?: unknown;
     timestamp: number;
 }
 

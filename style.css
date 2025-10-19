@@ -263,12 +263,13 @@
     font-size: calc(var(--mainFontSize) * 0.8);
     transition: all 0.2s ease;
     cursor: pointer;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .api-input:hover {
     border-color: var(--SmartThemeAccent);
     background-color: var(--grey5020a);
-    transform: translateY(-1px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -474,6 +475,17 @@
     line-height: 1.4;
 }
 
+/* 确保 textarea 也有统一的样式 */
+#text-image-generator-extension-container textarea {
+    transition: all 0.2s ease;
+}
+
+#text-image-generator-extension-container textarea:focus {
+    outline: none;
+    border-color: var(--SmartThemeAccent);
+    box-shadow: 0 0 0 2px rgba(var(--SmartThemeAccentRGB), 0.2);
+}
+
 /* removed to avoid overriding host utility classes: .flex1, .flexBasis100p */
 
 /* 按钮样式 */
@@ -549,9 +561,68 @@
     box-sizing: border-box;
 }
 
+/* 响应式间距 - 小屏幕时减小间距 */
+@media (max-width: 768px) {
+    #text-image-generator-extension-container .flex-container {
+        gap: 8px;
+    }
+
+    #text-image-generator-extension-container .tig-extension-content-item {
+        gap: 12px;
+        padding: 8px;
+    }
+
+    .config-card-content {
+        padding: 16px;
+        gap: 16px;
+    }
+
+    /* 触摸设备优化 - 增大可点击区域 */
+    .test-button {
+        min-height: 44px;
+        padding: 10px 18px;
+    }
+
+    .simple-toggle {
+        width: 56px;
+        height: 28px;
+    }
+
+    .simple-toggle label:before {
+        width: 22px;
+        height: 22px;
+    }
+
+    .simple-toggle input:checked + label:before {
+        transform: translateX(28px);
+    }
+}
+
 /* 不换行布局 */
 #text-image-generator-extension-container .flexnowrap {
     flex-wrap: nowrap;
+}
+
+/* 在不换行容器中，让输入框可以自由伸缩 */
+#text-image-generator-extension-container .flexnowrap .api-input {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 防止按钮被压缩 */
+#text-image-generator-extension-container .flexnowrap .test-button {
+    flex-shrink: 0;
+}
+
+/* 工作流选择器在flexnowrap中也能自适应 */
+#text-image-generator-extension-container .flexnowrap select.flex1 {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 防止图标按钮被压缩 */
+#text-image-generator-extension-container .flexnowrap .menu_button {
+    flex-shrink: 0;
 }
 
 #text-image-generator-extension-container .flex1 {
@@ -588,6 +659,8 @@
     background-position: right 8px center;
     background-size: 16px;
     padding-right: 32px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* Hover effects removed for select elements */
@@ -602,6 +675,38 @@
 #text-image-generator-extension-container .flex1 select:active {
     transform: translateY(0);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 统一所有 select 元素的样式 */
+#text-image-generator-extension-container select.model-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px;
+    padding-right: 32px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#text-image-generator-extension-container select.model-select:focus {
+    outline: none;
+    border-color: var(--SmartThemeAccent);
+    background-color: var(--grey5020a);
+    box-shadow: 0 0 0 2px rgba(var(--SmartThemeAccentRGB), 0.2);
+}
+
+/* 改进 focus-visible 以提高可访问性 */
+#text-image-generator-extension-container button:focus-visible,
+#text-image-generator-extension-container .test-button:focus-visible {
+    outline: 2px solid var(--SmartThemeAccent);
+    outline-offset: 2px;
+}
+
+#text-image-generator-extension-container select:focus-visible,
+#text-image-generator-extension-container input:focus-visible {
+    outline: 2px solid var(--SmartThemeAccent);
+    outline-offset: 1px;
 }
 
 /* 分辨率选择器占满宽度 */
@@ -647,11 +752,37 @@
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
+    position: relative;
 }
 
 .test-button:disabled:hover {
     background-color: var(--SmartThemeAccent);
     transform: none;
+    box-shadow: none;
+}
+
+/* 加载动画 - 可以在按钮中添加 .loading 类来显示 */
+.test-button.loading::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    top: 50%;
+    right: 8px;
+    margin-top: -7px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: button-loading-spinner 0.6s linear infinite;
+}
+
+@keyframes button-loading-spinner {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* 工具提示样式 */

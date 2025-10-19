@@ -1,0 +1,8 @@
+dist/
+node_modules/
+*.js.map
+*.min.js
+*.html
+CHANGELOG.md
+LICENSE
+

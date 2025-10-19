@@ -3,17 +3,23 @@
  */
 
 import { getExtensionRoot } from '../../utils/dom-utils';
+import type { Style } from '../types';
+
+/**
+ * 样式存储类型
+ */
+type StyleStore = Record<string, Style>;
 
 /**
  * 保存样式
  */
 export function saveStyle(): void {
-    const styleName = prompt('请输入样式名称:');
+    const styleName = prompt('请输入样式名称');
     if (!styleName) return;
 
     const $root = getExtensionRoot();
-    const promptPrefix = $root.find('#prompt-prefix-textarea').val() as string;
-    const negativePrompt = $root.find('#negative-prompt-textarea').val() as string;
+    const promptPrefix = ($root.find('#prompt-prefix-textarea').val() as string) || '';
+    const negativePrompt = ($root.find('#negative-prompt-textarea').val() as string) || '';
 
     const styles = getStyles();
     styles[styleName] = {
@@ -23,7 +29,7 @@ export function saveStyle(): void {
 
     localStorage.setItem('textToPicStyles', JSON.stringify(styles));
     updateStyleSelect();
-    alert('样式保存成功！');
+    toastr.success('样式保存成功');
 }
 
 /**
@@ -31,9 +37,9 @@ export function saveStyle(): void {
  */
 export function deleteStyle(): void {
     const $root = getExtensionRoot();
-    const selectedStyle = $root.find('#style-select').val() as string;
+    const selectedStyle = ($root.find('#style-select').val() as string) || '';
     if (!selectedStyle) {
-        alert('请先选择一个样式');
+        toastr.warning('请先选择一个样式');
         return;
     }
 
@@ -42,20 +48,25 @@ export function deleteStyle(): void {
         delete styles[selectedStyle];
         localStorage.setItem('textToPicStyles', JSON.stringify(styles));
         updateStyleSelect();
-        alert('样式删除成功！');
+        toastr.success('样式删除成功');
     }
 }
 
 /**
  * 获取样式
  */
-export function getStyles(): Record<string, any> {
-    const saved = localStorage.getItem('textToPicStyles');
-    return saved ? JSON.parse(saved) : {};
+export function getStyles(): StyleStore {
+    try {
+        const saved = localStorage.getItem('textToPicStyles');
+        return saved ? JSON.parse(saved) : {};
+    } catch (error) {
+        logger.warn('Failed to load styles from localStorage:', error);
+        return {};
+    }
 }
 
 /**
- * 更新样式选择框
+ * 更新样式选择器
  */
 export function updateStyleSelect(): void {
     const styles = getStyles();

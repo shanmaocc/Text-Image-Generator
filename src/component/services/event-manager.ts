@@ -1,21 +1,36 @@
-// 使用全局 log 对象，无需导入
 import {
     handleChatLoaded,
     handleGenerateImageButtonClick,
     handlePartialRender,
     partialRenderEvents,
-} from '../render_image';
+} from '../image-generation/event-handlers';
 import { getSettings } from './ui-manager';
 import { eventSource } from '@sillytavern/script';
+
+// 使用全局 logger 对象，无需导入
+
+/**
+ * 事件处理器类型
+ */
+interface EventHandlers {
+    chatLoaded: () => Promise<void>;
+    partialRender: (mesId: string, type: string) => void;
+}
+
+/**
+ * 扩展 Window 接口以支持自定义属性
+ */
+declare global {
+    interface Window {
+        textToPicEventHandlers?: EventHandlers;
+    }
+}
 
 /**
  * 事件管理器 - 负责所有事件的绑定和管理
  */
 export class EventManager {
-    private eventHandlers: {
-        chatLoaded: () => Promise<void>;
-        partialRender: (mesId: string, type: string) => void;
-    };
+    private eventHandlers: EventHandlers;
 
     constructor() {
         this.eventHandlers = this.createEventHandlers();
@@ -24,11 +39,11 @@ export class EventManager {
     /**
      * 创建事件处理器
      */
-    private createEventHandlers() {
+    private createEventHandlers(): EventHandlers {
         // 创建包装函数，检查扩展是否启用
         const wrappedHandleChatLoaded = async () => {
             const settings = getSettings();
-            log.info(`Extension enabled: ${settings.extensionEnabled}`);
+            logger.info(`Extension enabled: ${settings.extensionEnabled}`);
             if (settings.extensionEnabled) {
                 await handleChatLoaded();
             }
@@ -63,21 +78,21 @@ export class EventManager {
         $(document).off('click', '.generate-image-btn');
         $(document).on('click', '.generate-image-btn', handleGenerateImageButtonClick);
 
-        log.info('All events bound successfully');
+        logger.info('All events bound successfully');
     }
 
     /**
      * 暴露事件处理器到全局
      */
     exposeToGlobal(): void {
-        (window as any).textToPicEventHandlers = this.eventHandlers;
-        log.info('Event handlers exposed to global scope');
+        window.textToPicEventHandlers = this.eventHandlers;
+        logger.info('Event handlers exposed to global scope');
     }
 
     /**
      * 获取事件处理器引用
      */
-    getEventHandlers() {
+    getEventHandlers(): EventHandlers {
         return this.eventHandlers;
     }
 }

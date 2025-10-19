@@ -32,11 +32,18 @@ module.exports = {
         '@typescript-eslint/explicit-function-return-type': 'off',
         '@typescript-eslint/explicit-module-boundary-types': 'off',
 
-        // 允许空函数
-        '@typescript-eslint/no-empty-function': 'warn',
+        // 允许空函数（单例模式的私有构造函数需要）
+        '@typescript-eslint/no-empty-function': ['warn', { allow: ['private-constructors'] }],
 
         // 允许 require
         '@typescript-eslint/no-require-imports': 'off',
     },
-    ignorePatterns: ['dist/', 'node_modules/', '*.js', '*.cjs', 'vite.config.ts'],
+    ignorePatterns: [
+        'dist/',
+        'node_modules/',
+        '*.js',
+        '*.cjs',
+        'vite.config.ts',
+        'src/@types/**/*', // 类型定义文件允许使用 any
+    ],
 };

@@ -1,12 +1,7 @@
 import { event_types } from '@sillytavern/script';
-// 使用全局 log 对象，无需导入
 import { getSettings } from '../services/ui-manager';
 import { setupDeleteListener, syncGenerateButtonStateForMessage } from './button-manager';
-import {
-    getGenerationState,
-    handleAbortGeneration,
-    handleStartGeneration,
-} from './image-generator';
+import { getGenerationState, handleAbortGeneration, handleStartGeneration } from './generator';
 
 /**
  * 部分渲染事件列表
@@ -21,7 +16,7 @@ export const partialRenderEvents = [
  * 根据当前状态决定是开始生成还是中止生成
  */
 export async function handleGenerateImageButtonClick(this: HTMLElement): Promise<void> {
-    log.info('Generate image button clicked');
+    logger.info('Generate image button clicked');
     const $btn = $(this);
 
     const { isGenerating } = getGenerationState();
@@ -38,24 +33,24 @@ export async function handleGenerateImageButtonClick(this: HTMLElement): Promise
  * 聊天加载触发事件
  */
 export const handleChatLoaded = async (): Promise<void> => {
-    log.info('🔥 handleChatLoaded triggered');
+    logger.info('🔥 handleChatLoaded triggered');
 
     const settings = getSettings();
-    log.info(`Extension enabled: ${settings.extensionEnabled}`);
+    logger.info(`Extension enabled: ${settings.extensionEnabled}`);
 
     if (!settings.extensionEnabled) {
-        log.info('Extension disabled, skipping button addition');
+        logger.info('Extension disabled, skipping button addition');
         return;
     }
 
     const chatContainer = $('#chat');
     if (!chatContainer.length) {
-        log.warn('未找到聊天容器');
+        logger.warn('未找到聊天容器');
         return;
     }
 
     const allMessages: JQuery<HTMLElement> = chatContainer.find('.mes');
-    log.info(`Found ${allMessages.length} total messages`);
+    logger.info(`Found ${allMessages.length} total messages`);
 
     const aiMessages: JQuery<HTMLElement>[] = [];
     let processedCount = 0;
@@ -75,14 +70,14 @@ export const handleChatLoaded = async (): Promise<void> => {
         }
     });
 
-    log.info(`Processed ${processedCount} AI messages`);
+    logger.info(`Processed ${processedCount} AI messages`);
     setupDeleteListener();
 };
 
 /**
  * 部分渲染事件处理
  */
-export const handlePartialRender = (mesId: string, type: string): void => {
+export const handlePartialRender = (mesId: string, _type: string): void => {
     const settings = getSettings();
     if (!settings.extensionEnabled) {
         return;

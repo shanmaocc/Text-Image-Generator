@@ -10,7 +10,7 @@ declare global {
      * 全局 log 对象
      * 可在任何地方直接使用，无需导入
      */
-    var log: Logger;
+    var logger: Logger;
 
     /**
      * Vite 环境变量接口

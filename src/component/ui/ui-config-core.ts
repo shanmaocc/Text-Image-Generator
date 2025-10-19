@@ -1,13 +1,7 @@
-import { syncGenerateButtonStateForMessage } from '../render_image';
+import { syncGenerateButtonStateForMessage } from '../image-generation/button-manager';
 import getContext from '@sillytavern/scripts/st-context';
-import { getExtensionRoot, findInRoot } from '../../utils/dom-utils';
-import {
-    getSettings,
-    saveSetting,
-    FIXED_OPTIONS,
-    DEFAULT_COMFY_URL,
-    UISettings,
-} from '../services/ui-manager';
+import { getExtensionRoot } from '../../utils/dom-utils';
+import { getSettings, saveSetting, FIXED_OPTIONS, DEFAULT_COMFY_URL } from '../services/ui-manager';
 import {
     createNewWorkflow,
     deleteWorkflow,
@@ -16,13 +10,13 @@ import {
 } from '../services/workflow-manager';
 import { populateComfyOptions, validateComfyUrl } from './ui-config-comfy';
 import { populateOpenAIModels, refreshOpenAIModels } from './ui-config-openai';
-import { saveStyle, deleteStyle, updateStyleSelect } from './ui-config-styles';
+import { saveStyle, deleteStyle, updateStyleSelect, getStyles } from './ui-config-styles';
 import { loadSillyTavernPresets, loadSillyTavernPresetContent } from './ui-config-presets';
 
 /**
  * 更新数据源设置显示
  */
-export function updateSourceSettings(source: string): void {
+export function updateSourceSettings(_source: string): void {
     const $root = getExtensionRoot();
     $root.find('.source-settings').hide();
     $root.find('#comfy-source-settings').show();
@@ -142,17 +136,17 @@ export async function loadSettings(): Promise<void> {
 }
 
 /**
- * 初始化界面功能
- */
+ * 初始化界面功能 */
 export async function initializeUI(): Promise<void> {
     const $root = getExtensionRoot();
 
     $root.on('change', '#extension-enable-toggle', function () {
         const enabled = $(this).is(':checked');
-        log.info('Extension enabled:', enabled);
+        logger.info('🔄 Extension toggle changed. Enabled:', enabled);
         saveSetting('extensionEnabled', enabled);
 
         if (enabled) {
+            logger.info('✅ Enabling extension: adding buttons to existing messages');
             const chatContainer = $('#chat');
             if (chatContainer.length) {
                 const allMessages = chatContainer.find('.mes');
@@ -170,8 +164,12 @@ export async function initializeUI(): Promise<void> {
                 });
             }
         } else {
+            logger.info('❌ Disabling extension: removing all buttons');
+            const buttonCount = $(document).find('.generate-image-btn').length;
+            logger.info(`Found ${buttonCount} buttons to remove`);
             $(document).find('.generate-image-btn').remove();
             $(document).off('click', '.generate-image-btn');
+            logger.info('All buttons removed');
         }
     });
 
@@ -346,7 +344,7 @@ export async function initializeUI(): Promise<void> {
     $root.on('change', '#style-select', function () {
         const selectedStyle = $(this).val() as string;
         if (selectedStyle) {
-            const styles = require('./ui-config-styles').getStyles();
+            const styles = getStyles();
             const style = styles[selectedStyle];
             if (style) {
                 $root.find('#prompt-prefix-textarea').val(style.promptPrefix);

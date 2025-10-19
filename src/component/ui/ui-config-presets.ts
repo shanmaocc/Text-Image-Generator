@@ -1,10 +1,12 @@
 import getContext from '@sillytavern/scripts/st-context';
-import type { STContextExtended } from '@sillytavern/scripts/st-context';
+import type { STContext } from '@sillytavern/scripts/st-context';
 import { getRequestHeaders } from '@sillytavern/script';
 import { getSettings, saveSetting } from '../services/ui-manager';
-import { getExtensionRoot, findInRoot } from '../../utils/dom-utils';
+import { getExtensionRoot } from '../../utils/dom-utils';
 
-// Types for stronger safety
+/**
+ * OpenAI预设类型定义
+ */
 interface OpenAIPreset {
     name?: string;
     title?: string;
@@ -21,9 +23,31 @@ interface OpenAIPreset {
     neg_prompt?: string;
 }
 
+/**
+ * 预设源结果接口
+ */
 interface PresetSourceResult {
     names?: string[];
     settings?: OpenAIPreset[];
+}
+
+/**
+ * 扩展的ST上下文，包含OpenAI预设信息
+ */
+interface STContextWithPresets extends STContext {
+    openai_setting_names?: string[];
+    openai_settings?: unknown[];
+}
+
+/**
+ * 类型守卫：检查上下文是否包含OpenAI预设
+ */
+function hasOpenAIPresets(ctx: STContext): ctx is STContextWithPresets {
+    const extended = ctx as STContextWithPresets;
+    return Boolean(
+        (extended.openai_setting_names && Array.isArray(extended.openai_setting_names)) ||
+            (extended.openai_settings && Array.isArray(extended.openai_settings))
+    );
 }
 
 function resolvePresetName(preset: unknown, fallback: string): string {
@@ -46,30 +70,40 @@ function getOpenAIPresetsFromDom(): PresetSourceResult {
     return names.length ? { names } : {};
 }
 
-// Read from SillyTavern runtime context if available
+/**
+ * 从SillyTavern运行时上下文读取OpenAI预设
+ */
 function getOpenAIPresetsFromContext(): PresetSourceResult {
     const ctx = getContext();
-    // 类型安全地访问扩展字段
-    const extendedCtx = ctx as any;
-    const namesOk = Array.isArray(extendedCtx?.openai_setting_names);
-    const settingsOk = Array.isArray(extendedCtx?.openai_settings);
+
+    if (!hasOpenAIPresets(ctx)) {
+        return {};
+    }
+
+    const namesOk = Array.isArray(ctx.openai_setting_names);
+    const settingsOk = Array.isArray(ctx.openai_settings);
+
     if (namesOk && settingsOk) {
         return {
-            names: extendedCtx.openai_setting_names as string[],
-            settings: extendedCtx.openai_settings as OpenAIPreset[],
+            names: ctx.openai_setting_names as string[],
+            settings: ctx.openai_settings as OpenAIPreset[],
         };
     }
+
     if (settingsOk) {
-        const settings = extendedCtx.openai_settings as OpenAIPreset[];
+        const settings = ctx.openai_settings as OpenAIPreset[];
         const names = settings.map((p: OpenAIPreset, i: number) =>
             resolvePresetName(p, `预设 ${i + 1}`)
         );
         return { names, settings };
     }
+
     return {};
 }
 
-// Fetch from server as a last resort
+/**
+ * 从服务器获取OpenAI预设（最后的手段）
+ */
 async function fetchOpenAIPresetsFromServer(): Promise<PresetSourceResult> {
     try {
         const response = await fetch('/api/settings/get', {
@@ -79,7 +113,7 @@ async function fetchOpenAIPresetsFromServer(): Promise<PresetSourceResult> {
         });
 
         if (!response.ok) {
-            log.error('服务器响应失败:', response.status, response.statusText);
+            logger.warn('服务器响应失败:', response.status, response.statusText);
             return {};
         }
 
@@ -101,16 +135,13 @@ async function fetchOpenAIPresetsFromServer(): Promise<PresetSourceResult> {
             });
             const names: string[] = namesRaw as string[];
 
-            // 打印预设内容（调试用，后续删除）
-            log.info('获取到的预设列表:', JSON.stringify(names, null, 2));
-            log.info('预设详细内容:', JSON.stringify(settings, null, 2));
-
+            logger.debug('获取到预设列表:', names.length, '个');
             return { names, settings };
         }
 
         return {};
     } catch (err) {
-        log.error('从服务器获取预设数据失败:', err);
+        logger.warn('从服务器获取预设数据失败:', err);
         return {};
     }
 }
@@ -120,8 +151,8 @@ async function fetchOpenAIPresetsFromServer(): Promise<PresetSourceResult> {
  */
 export async function loadSillyTavernPresets(): Promise<void> {
     const $root = getExtensionRoot();
-    const select = findInRoot('#sillytavern-preset-select');
-    const refreshBtn = findInRoot('#refresh-sillytavern-presets');
+    const select = $root.find('#sillytavern-preset-select');
+    const refreshBtn = $root.find('#refresh-sillytavern-presets');
 
     select.empty().append('<option value="">-- 加载预设中... --</option>');
     refreshBtn.prop('disabled', true);
@@ -158,10 +189,11 @@ export async function loadSillyTavernPresets(): Promise<void> {
             select.append('<option value="" disabled>-- 暂无预设 --</option>');
             toastr.warning('未找到主站预设，请确保已配置 OpenAI 预设');
         }
-    } catch (error: any) {
-        log.error('Failed to load SillyTavern presets:', error);
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '无法获取预设数据';
+        logger.error('Failed to load SillyTavern presets:', error);
         select.empty().append('<option value="">-- 加载失败 --</option>');
-        toastr.error(`加载预设失败: ${error.message || '无法获取预设数据'}`);
+        toastr.error(`加载预设失败: ${errorMessage}`);
     } finally {
         refreshBtn.prop('disabled', false);
     }
@@ -172,14 +204,16 @@ export async function loadSillyTavernPresets(): Promise<void> {
  */
 export async function loadSillyTavernPresetContent(presetId: string): Promise<void> {
     try {
-        log.info('Loading SillyTavern preset content:', presetId);
+        logger.debug('加载SillyTavern预设内容:', presetId);
         let targetPreset: OpenAIPreset | string | undefined;
 
         // Context first
         const ctx = getContext();
-        let ctxSettings: unknown[] | undefined = Array.isArray((ctx as any)?.openai_settings)
-            ? (ctx as any).openai_settings
-            : undefined;
+        let ctxSettings: unknown[] | undefined;
+
+        if (hasOpenAIPresets(ctx) && Array.isArray(ctx.openai_settings)) {
+            ctxSettings = ctx.openai_settings;
+        }
 
         if (!ctxSettings) {
             // Fetch from server and parse
@@ -188,23 +222,22 @@ export async function loadSillyTavernPresetContent(presetId: string): Promise<vo
         }
 
         if (Array.isArray(ctxSettings)) {
-            const index = parseInt(presetId);
+            const index = parseInt(presetId, 10);
             if (!isNaN(index) && index >= 0 && index < ctxSettings.length) {
                 targetPreset = ctxSettings[index] as OpenAIPreset | string;
             } else {
                 throw new Error(`索引无效: ${index}, 总数: ${ctxSettings.length}`);
             }
         } else {
-            throw new Error('ctxSettings 不是数组');
+            throw new Error('预设数据格式错误');
         }
 
         if (!targetPreset) {
             throw new Error('未找到指定的预设');
         }
 
-        // 打印预设内容（调试用，后续删除）
-        console.log('[DEBUG] 选择的预设内容:', JSON.stringify(targetPreset, null, 2));
-        log.info('选择的预设内容:', JSON.stringify(targetPreset, null, 2));
+        logger.debug('预设加载成功:', typeof targetPreset === 'string' ? '字符串' : '对象');
+        logger.debug('预设内容:', targetPreset);
 
         const $root = getExtensionRoot();
         let promptPrefix = '';
@@ -240,8 +273,9 @@ export async function loadSillyTavernPresetContent(presetId: string): Promise<vo
         }
 
         toastr.success('预设已应用');
-    } catch (error: any) {
-        log.error('加载预设内容失败:', error);
-        toastr.error(`加载预设内容失败: ${error.message || '无法获取预设数据'}`);
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '无法获取预设数据';
+        logger.error('加载预设内容失败:', error);
+        toastr.error(`加载预设内容失败: ${errorMessage}`);
     }
 }

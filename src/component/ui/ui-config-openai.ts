@@ -1,6 +1,6 @@
 import { getRequestHeaders } from '@sillytavern/script';
 // 使用全局 log 对象，无需导入
-import { getSettings, saveSetting, UISettings } from '../services/ui-manager';
+import { getSettings, UISettings } from '../services/ui-manager';
 import { getExtensionRoot } from '../../utils/dom-utils';
 
 /**
@@ -9,7 +9,7 @@ import { getExtensionRoot } from '../../utils/dom-utils';
 export async function refreshOpenAIModels(): Promise<void> {
     try {
         const settings = getSettings();
-        let req = {
+        const req = {
             reverse_proxy: settings.openaiApiUrl,
             proxy_password: settings.openaiApiKey,
             chat_completion_source: settings.chat_completion_source,
@@ -28,8 +28,13 @@ export async function refreshOpenAIModels(): Promise<void> {
         const data = await statusResp.json();
         const models = Array.isArray(data?.data) ? data.data : [];
         const modelIds: string[] = models
-            .map((m: any) => m?.id)
-            .filter((v: any) => typeof v === 'string');
+            .map((m: unknown) => {
+                if (m && typeof m === 'object' && 'id' in m) {
+                    return (m as { id: unknown }).id;
+                }
+                return undefined;
+            })
+            .filter((v: unknown): v is string => typeof v === 'string');
 
         const metaText = `已加载 ${modelIds.length} 个可用模型`;
         const $root = getExtensionRoot();
@@ -43,9 +48,10 @@ export async function refreshOpenAIModels(): Promise<void> {
         if (cur) select.val(cur);
 
         toastr.success(`成功加载 ${modelIds.length} 个模型`);
-    } catch (err: any) {
-        toastr.error(`刷新模型列表异常：${err?.message || '网络错误'}`);
-        log.error('Failed to refresh OpenAI models:', err);
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : '网络错误';
+        toastr.error(`刷新模型列表异常：${errorMessage}`);
+        logger.error('Failed to refresh OpenAI models:', err);
     }
 }
 

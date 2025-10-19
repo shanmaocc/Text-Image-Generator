@@ -1,12 +1,13 @@
-// 使用全局 log 对象，无需导入
 import { getSettings } from '../services/ui-manager';
+import { safeAttr } from '../utils/security';
 
 /**
  * 创建生成图片按钮的HTML
  */
 export function createGenerateButtonHTML(mesId: string): string {
+    const safeMesId = safeAttr(mesId);
     return `
-        <button class="generate-image-btn" data-mes-id="${mesId}">
+        <button class="generate-image-btn" data-mes-id="${safeMesId}">
             <span class="btn-text">生成图片</span>
             <i class="fa-solid fa-spinner fa-spin btn-loading" style="display:none;margin-left:8px;"></i>
         </button>
@@ -17,8 +18,9 @@ export function createGenerateButtonHTML(mesId: string): string {
  * 创建停止按钮的HTML
  */
 export function createStopButtonHTML(mesId: string): string {
+    const safeMesId = safeAttr(mesId);
     return `
-        <button class="stop-image-btn" data-mes-id="${mesId}" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%); border: none; border-radius: 4px; color: white; padding: 4px 8px; font-size: 11px; font-weight: 500; cursor: pointer; transition: 0.3s; box-shadow: rgba(255, 107, 107, 0.3) 0px 1px 4px; margin: 4px 0px 4px 8px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; vertical-align: middle;">
+        <button class="stop-image-btn" data-mes-id="${safeMesId}" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%); border: none; border-radius: 4px; color: white; padding: 4px 8px; font-size: 11px; font-weight: 500; cursor: pointer; transition: 0.3s; box-shadow: rgba(255, 107, 107, 0.3) 0px 1px 4px; margin: 4px 0px 4px 8px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; vertical-align: middle;">
             <i class="fa-solid fa-stop" style="font-size: 10px;"></i>
             <span>停止</span>
         </button>
@@ -162,7 +164,7 @@ export async function syncGenerateButtonStateForMessage(
     const isEnabled = extensionEnabled !== undefined ? extensionEnabled : settings.extensionEnabled;
 
     if (!isEnabled) {
-        log.info('Extension disabled, removing generate buttons');
+        logger.info('Extension disabled, removing generate buttons');
         const $ImageBtn = $message.find('.generate-image-btn');
         if ($ImageBtn.length) {
             $ImageBtn.remove();
@@ -181,18 +183,17 @@ export async function syncGenerateButtonStateForMessage(
 
     const $imgContainer = $message.find('.mes_img_container');
 
-    // 🐛 调试日志
-    log.info(
+    logger.debug(
         `[mesId:${mesId}] Container found: ${$imgContainer.length}, visible: ${$imgContainer.is(':visible')}, display: ${$imgContainer.css('display')}`
     );
 
     // 如果容器可见（display不是none，说明有图片），不添加按钮
     if ($imgContainer.is(':visible')) {
-        log.info(`[mesId:${mesId}] Container is visible (has image), not adding button`);
+        logger.info(`[mesId:${mesId}] Container is visible (has image), not adding button`);
         return;
     }
 
     // 容器隐藏（display:none，说明没有图片），添加按钮
-    log.info(`[mesId:${mesId}] Container is hidden (no image), adding button`);
+    logger.info(`[mesId:${mesId}] Container is hidden (no image), adding button`);
     addGenerateImageButton($message, $imgContainer, mesId);
 }

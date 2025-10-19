@@ -45,7 +45,7 @@ export async function populateComfyOptions(): Promise<void> {
             );
         });
     } catch (error) {
-        log.error('Failed to load ComfyUI options:', error);
+        logger.error('Failed to load ComfyUI options:', error);
         clearAllOptions();
     }
 }
@@ -85,8 +85,9 @@ export async function validateComfyUrl(): Promise<void> {
 
         await populateComfyOptions();
         await updateWorkflowSelect();
-    } catch (err: any) {
-        toastr.error(`ComfyUI 连接异常：${err?.message || '网络错误'}`);
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : '网络错误';
+        toastr.error(`ComfyUI 连接异常：${errorMessage}`);
     } finally {
         button.text(originalText).prop('disabled', false);
     }

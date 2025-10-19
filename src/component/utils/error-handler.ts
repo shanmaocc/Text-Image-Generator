@@ -3,7 +3,7 @@
 export interface ErrorInfo {
     message: string;
     code?: string | undefined;
-    details?: any;
+    details?: unknown;
     timestamp: number;
 }
 
@@ -25,14 +25,14 @@ export enum ErrorType {
 export class AppError extends Error {
     public readonly type: ErrorType;
     public readonly code?: string | undefined;
-    public readonly details?: any;
+    public readonly details?: unknown;
     public readonly timestamp: number;
 
     constructor(
         message: string,
         type: ErrorType = ErrorType.UNKNOWN,
         code?: string | undefined,
-        details?: any
+        details?: unknown
     ) {
         super(message);
         this.name = 'AppError';
@@ -71,48 +71,46 @@ export class ErrorHandler {
         };
 
         // 记录错误日志
-        this.errorLog.push(errorInfo);
-        console.error(`[${context || 'Unknown'}] Error:`, errorInfo);
+        this.errorlogger.push(errorInfo);
+        logger.error(`[${context || 'Unknown'}] Error:`, errorInfo);
 
-        // 显示用户友好的错误消息
-        this.showUserError(error, context);
+        // 显示用户友好的错误消�?        this.showUserError(error, context);
     }
 
     /**
-     * 显示用户友好的错误消息
-     */
-    private showUserError(error: Error | AppError, context?: string): void {
+     * 显示用户友好的错误消�?     */
+    private showUserError(error: Error | AppError, _context?: string): void {
         let userMessage: string;
 
         if (error instanceof AppError) {
             switch (error.type) {
                 case ErrorType.NETWORK:
-                    userMessage = `网络连接失败：${error.message}`;
+                    userMessage = `网络连接失败�?{error.message}`;
                     break;
                 case ErrorType.API:
-                    userMessage = `API调用失败：${error.message}`;
+                    userMessage = `API调用失败�?{error.message}`;
                     break;
                 case ErrorType.VALIDATION:
-                    userMessage = `输入验证失败：${error.message}`;
+                    userMessage = `输入验证失败�?{error.message}`;
                     break;
                 case ErrorType.WORKFLOW:
                     userMessage = `工作流错误：${error.message}`;
                     break;
                 case ErrorType.UI:
-                    userMessage = `界面错误：${error.message}`;
+                    userMessage = `界面错误�?{error.message}`;
                     break;
                 default:
-                    userMessage = `未知错误：${error.message}`;
+                    userMessage = `未知错误�?{error.message}`;
             }
         } else {
-            userMessage = `系统错误：${error.message}`;
+            userMessage = `系统错误�?{error.message}`;
         }
 
         // 使用toastr显示错误消息
         if (typeof toastr !== 'undefined') {
             toastr.error(userMessage);
         } else {
-            console.error('Toastr not available, error:', userMessage);
+            logger.error('Toastr 不可用，错误信息:', userMessage);
         }
     }
 
@@ -133,35 +131,34 @@ export class ErrorHandler {
     /**
      * 创建网络错误
      */
-    public static createNetworkError(message: string, details?: any): AppError {
+    public static createNetworkError(message: string, details?: unknown): AppError {
         return new AppError(message, ErrorType.NETWORK, 'NETWORK_ERROR', details);
     }
 
     /**
      * 创建API错误
      */
-    public static createAPIError(message: string, code?: string, details?: any): AppError {
+    public static createAPIError(message: string, code?: string, details?: unknown): AppError {
         return new AppError(message, ErrorType.API, code, details);
     }
 
     /**
      * 创建验证错误
      */
-    public static createValidationError(message: string, details?: any): AppError {
+    public static createValidationError(message: string, details?: unknown): AppError {
         return new AppError(message, ErrorType.VALIDATION, 'VALIDATION_ERROR', details);
     }
 
     /**
-     * 创建工作流错误
-     */
-    public static createWorkflowError(message: string, details?: any): AppError {
+     * 创建工作流错�?     */
+    public static createWorkflowError(message: string, details?: unknown): AppError {
         return new AppError(message, ErrorType.WORKFLOW, 'WORKFLOW_ERROR', details);
     }
 
     /**
      * 创建UI错误
      */
-    public static createUIError(message: string, details?: any): AppError {
+    public static createUIError(message: string, details?: unknown): AppError {
         return new AppError(message, ErrorType.UI, 'UI_ERROR', details);
     }
 }

@@ -1,5 +1,11 @@
-import type { UISettings } from '../@types';
-import { AIMessage } from './types';
+/**
+ * OpenAI API 客户端模块
+ * 提供与 OpenAI 兼容 API 的交互功能
+ */
+
+import type { UISettings } from '../../@types';
+import { AIMessage } from '../types';
+import { sanitizeForLog } from './security';
 
 /**
  * 调用OpenAI兼容API进行对话请求（直接访问）
@@ -98,13 +104,17 @@ export async function callSillyTavernOpenAI(
 
     const generate_url = '/api/backends/chat-completions/generate';
 
+    logger.debug('发送 OpenAI 请求:', sanitizeForLog(requestBody));
+
     const response = await fetch(generate_url, fetchOptions);
 
     if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`SillyTavern OpenAI API请求失败: ${response.status} - ${errorText}`);
+        logger.error('OpenAI API 请求失败:', response.status, sanitizeForLog(errorText));
+        throw new Error(`SillyTavern OpenAI API请求失败: ${response.status}`);
     }
 
     const responseData = await response.json();
+    logger.debug('OpenAI 响应成功');
     return responseData?.choices?.[0]?.message?.content ?? '';
 }

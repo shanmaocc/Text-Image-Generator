@@ -63,12 +63,17 @@ export function getSettings(): UISettings {
 
 /**
  * 保存设置
+ * @param key 设置键名
+ * @param value 设置值
  */
+export function saveSetting<K extends keyof UISettings>(key: K, value: UISettings[K]): void;
+export function saveSetting(key: string, value: unknown): void;
 export function saveSetting(key: string, value: unknown): void {
     try {
         const settings = getSettings();
-        (settings as any)[key] = value;
-        localStorage.setItem(APP_CONSTANTS.STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+        // 使用索引签名安全地更新设置
+        const updatedSettings = { ...settings, [key]: value };
+        localStorage.setItem(APP_CONSTANTS.STORAGE_KEYS.SETTINGS, JSON.stringify(updatedSettings));
     } catch (error) {
         errorHandler.handleError(error as Error, 'Save Setting');
     }

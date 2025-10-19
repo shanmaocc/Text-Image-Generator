@@ -13,23 +13,6 @@ import {
 } from './api-service';
 import { getSettings, saveSetting } from './ui-manager';
 
-const PLACEHOLDERS = [
-    'prompt',
-    'negative_prompt',
-    'model',
-    'vae',
-    'sampler',
-    'scheduler',
-    'steps',
-    'scale',
-    'denoise',
-    'clip_skip',
-    'width',
-    'height',
-    'user_avatar',
-    'char_avatar',
-];
-
 const CUSTOM_PH_STORAGE_KEY = 'textToPicCustomPlaceholders';
 
 /**
@@ -54,8 +37,8 @@ function saveCustomPlaceholders(placeholders: WorkflowPlaceholder[]): void {
 }
 
 /**
- * 更新工作流选择框
- * 从服务器加载工作流列表并填充到下拉框中
+ * 更新工作流选择器
+ * 从服务器加载工作流列表并填充到下拉框
  */
 export async function updateWorkflowSelect(): Promise<void> {
     try {
@@ -78,7 +61,7 @@ export async function updateWorkflowSelect(): Promise<void> {
             select.val(settings.comfyWorkflowName);
         }
     } catch (error) {
-        log.error('加载工作流列表失败:', error);
+        logger.error('加载工作流列表失败', error);
         const $root = getExtensionRoot();
         const select = $root.find('#comfy-workflow-select');
         select.empty();
@@ -106,7 +89,7 @@ export async function getSelectedWorkflow(): Promise<ComfyWorkflow | null> {
         const result = replaceWorkflowPlaceholders(workflow);
         return result;
     } catch (error) {
-        log.error(`Failed to load workflow ${workflowName}:`, error);
+        logger.error(`Failed to load workflow ${workflowName}:`, error);
         return null;
     }
 }
@@ -149,11 +132,7 @@ function replaceWorkflowPlaceholders(workflow: ComfyWorkflow): ComfyWorkflow {
         result = result.replace(/"%seed%"/g, String(settings.sd_seed));
     } else {
         // 为每个节点生成不同的随机种子
-        let seedCount = 0;
-        result = result.replace(/"%seed%"/g, () => {
-            seedCount++;
-            return String(generateRandomSeed());
-        });
+        result = result.replace(/"%seed%"/g, () => String(generateRandomSeed()));
     }
 
     // 暂时跳过自定义占位符处理，专注于基本占位符
@@ -167,8 +146,8 @@ function replaceWorkflowPlaceholders(workflow: ComfyWorkflow): ComfyWorkflow {
     try {
         return JSON.parse(result);
     } catch (error) {
-        log.error('Failed to parse workflow after placeholder replacement:', error);
-        log.error('Problematic JSON string:', result.substring(0, 1000));
+        logger.error('Failed to parse workflow after placeholder replacement:', error);
+        logger.error('Problematic JSON string:', result.substring(0, 1000));
         // 返回原始工作流，让后续处理继续
         return workflowCopy;
     }
@@ -192,12 +171,12 @@ export function quickReplacePlaceholders(): void {
 
         $('#sd_comfy_workflow_editor_workflow').val(newWorkflowText);
 
-        // 触发占位符检查
+        // 触发占位符检测
         $('#sd_comfy_workflow_editor_workflow').trigger('input');
 
-        toastr.success('快捷替换完成！');
+        toastr.success('快捷替换完成');
     } catch (error) {
-        console.error('快捷替换失败:', error);
+        logger.error('快捷替换失败:', error);
         toastr.error('工作流格式错误，请检查JSON格式');
     }
 }
@@ -219,16 +198,22 @@ function replaceValuesWithPlaceholders(obj: unknown, nodeId?: string): unknown {
     }
 
     if (obj && typeof obj === 'object') {
-        const result: any = {};
+        const result: Record<string, unknown> = {};
+        const objRecord = obj as Record<string, unknown>;
 
-        for (const [key, value] of Object.entries(obj)) {
+        for (const [key, value] of Object.entries(objRecord)) {
             if (key === 'class_type') {
                 // 保留class_type不变
                 result[key] = value;
-            } else if (key === 'inputs' && typeof value === 'object') {
+            } else if (key === 'inputs' && typeof value === 'object' && value !== null) {
                 // 处理inputs对象，传递节点信息
-                const classType = (obj as any)['class_type'] || '';
-                result[key] = replaceInputsWithPlaceholders(value as any, classType, nodeId);
+                const classType =
+                    typeof objRecord['class_type'] === 'string' ? objRecord['class_type'] : '';
+                result[key] = replaceInputsWithPlaceholders(
+                    value as Record<string, unknown>,
+                    classType,
+                    nodeId
+                );
             } else {
                 result[key] = replaceValuesWithPlaceholders(value, key);
             }
@@ -244,9 +229,9 @@ function replaceValuesWithPlaceholders(obj: unknown, nodeId?: string): unknown {
  * 替换inputs中的值为占位符
  */
 function replaceInputsWithPlaceholders(
-    inputs: any,
+    inputs: Record<string, unknown>,
     classType: string = '',
-    nodeId: string = ''
+    _nodeId: string = ''
 ): Record<string, unknown> {
     const result: Record<string, unknown> = {};
 
@@ -284,7 +269,6 @@ function replaceInputsWithPlaceholders(
         }
 
         // 去噪值应该使用用户界面设置的值，不需要特殊处理
-
         // 根据字段名判断应该替换为什么占位符
         if (key === 'text' && typeof value === 'string') {
             // 文本字段，检查是否包含提示词相关内容
@@ -365,7 +349,7 @@ export async function openWorkflowEditor(): Promise<void> {
             )
         );
 
-        const saveValue = (_popup: any) => {
+        const saveValue = () => {
             workflow = $('#sd_comfy_workflow_editor_workflow').val()?.toString() || '';
             return true;
         };
@@ -398,7 +382,7 @@ export async function openWorkflowEditor(): Promise<void> {
         const addPlaceholderDom = (placeholder: { find: string; replace: string }) => {
             const el = $(`
                 <li class="sd_comfy_workflow_editor_not_found" data-placeholder="${placeholder.find}">
-            <span class="sd_comfy_workflow_editor_custom_remove" title="Remove custom placeholder">⊘</span>
+            <span class="sd_comfy_workflow_editor_custom_remove" title="Remove custom placeholder">✕</span>
                     <span class="sd_comfy_workflow_editor_custom_final">"%${placeholder.find}%"</span><br>
             <input placeholder="find" title="find" type="text" class="text_pole sd_comfy_workflow_editor_custom_find" value=""><br>
             <input placeholder="replace" title="replace" type="text" class="text_pole sd_comfy_workflow_editor_custom_replace">
@@ -464,7 +448,7 @@ export async function openWorkflowEditor(): Promise<void> {
             toastr.success('工作流保存成功');
         }
     } catch (error) {
-        console.error('Failed to open workflow editor:', error);
+        logger.error('打开工作流编辑器失败:', error);
         toastr.error('打开工作流编辑器失败');
     }
 }
@@ -490,7 +474,7 @@ export async function createNewWorkflow(): Promise<void> {
         // 自动打开工作流编辑器
         await openWorkflowEditor();
     } catch (error) {
-        console.error('Failed to create workflow:', error);
+        logger.error('创建工作流失败', error);
         toastr.error('创建工作流失败');
     }
 }
@@ -519,7 +503,7 @@ export async function deleteWorkflow(): Promise<void> {
         saveSetting('comfyWorkflowName', '');
         await updateWorkflowSelect();
     } catch (error) {
-        console.error('Failed to delete workflow:', error);
+        logger.error('删除工作流失败', error);
         toastr.error('删除工作流失败');
     }
 }

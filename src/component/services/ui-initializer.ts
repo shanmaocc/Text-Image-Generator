@@ -1,5 +1,5 @@
 // 使用全局 log 对象，无需导入
-import { initializeUI } from '../ui-config';
+import { initializeUI } from '../ui/ui-config-core';
 import { renderExtensionTemplateAsync } from '@sillytavern/scripts/extensions';
 
 /**
@@ -13,7 +13,7 @@ export class UIInitializer {
      * 初始化UI
      */
     async initializeUI(): Promise<void> {
-        log.info('Initializing UI...');
+        logger.info('Initializing UI...');
 
         // 获取容器并渲染UI模板
         const getContainer = () => $('#extensions_settings');
@@ -23,6 +23,6 @@ export class UIInitializer {
         // 初始化界面功能
         initializeUI();
 
-        log.info('Text-Image-Generator extension UI loaded');
+        logger.info('Text-Image-Generator extension UI loaded');
     }
 }

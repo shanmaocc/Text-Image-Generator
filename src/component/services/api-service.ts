@@ -1,8 +1,8 @@
 // ComfyUI API 服务模块
 import { getRequestHeaders } from '@sillytavern/script';
 import { ComfyUIOption, ComfyUISettings } from '../types';
-import { errorHandler, ErrorHandler } from '../utils/error-handler';
-// 使用全局 log 对象，无需导入
+import { errorHandler } from '../utils/error-handler';
+import { LRUCache } from '../utils/lru-cache';
 
 /**
  * 通用ComfyUI API调用函数
@@ -12,24 +12,19 @@ async function callComfyAPI<T>(endpoint: string, settings: ComfyUISettings): Pro
         throw new Error('ComfyUI URL未配置');
     }
 
-    try {
-        const result = await fetch(endpoint, {
-            method: 'POST',
-            headers: getRequestHeaders(),
-            body: JSON.stringify({
-                url: settings.comfyUrl,
-            }),
-        });
+    const result = await fetch(endpoint, {
+        method: 'POST',
+        headers: getRequestHeaders(),
+        body: JSON.stringify({
+            url: settings.comfyUrl,
+        }),
+    });
 
-        if (!result.ok) {
-            throw new Error('ComfyUI returned an error.');
-        }
-
-        return await result.json();
-    } catch (error) {
-        // 静默处理错误，直接抛出异常（参考主站插件）
-        throw error;
+    if (!result.ok) {
+        throw new Error('ComfyUI returned an error.');
     }
+
+    return await result.json();
 }
 
 /**
@@ -76,7 +71,7 @@ export async function loadComfySchedulers(settings: ComfyUISettings): Promise<Co
         return await callComfyAPI<ComfyUIOption[]>('/api/sd/comfy/schedulers', settings);
     } catch (error) {
         // 静默处理错误，不显示错误提示（参考主站插件）
-        log.warn('Failed to load ComfyUI schedulers:', error);
+        logger.warn('Failed to load ComfyUI schedulers:', error);
         return [];
     }
 }
@@ -94,7 +89,7 @@ export async function loadComfyVaes(settings: ComfyUISettings): Promise<ComfyUIO
 
         // 如果API返回空结果，可能是因为模型使用了Baked VAE
         if (!result || result.length === 0) {
-            log.info('No VAE options returned from API - model likely uses Baked VAE');
+            logger.info('No VAE options returned from API - model likely uses Baked VAE');
             // 返回Baked VAE选项，让用户知道模型有内置VAE
             return [
                 {
@@ -106,7 +101,7 @@ export async function loadComfyVaes(settings: ComfyUISettings): Promise<ComfyUIO
 
         return result;
     } catch (error) {
-        log.warn('Failed to load ComfyUI VAEs:', error);
+        logger.warn('Failed to load ComfyUI VAEs:', error);
         // API调用失败时，也提供Baked VAE选项
         return [
             {
@@ -118,86 +113,33 @@ export async function loadComfyVaes(settings: ComfyUISettings): Promise<ComfyUIO
 }
 
 /**
- * 缓存键名
+ * LRU 缓存实例（最多50个条目，5分钟过期）
  */
-const CACHE_KEYS = {
-    MODELS: 'comfyui_models_cache',
-    SAMPLERS: 'comfyui_samplers_cache',
-    SCHEDULERS: 'comfyui_schedulers_cache',
-    VAES: 'comfyui_vaes_cache',
-    LAST_UPDATE: 'comfyui_options_last_update',
-};
+const optionsCache = new LRUCache<string, ComfyUIOption[]>(50, 5 * 60 * 1000);
 
 /**
- * 缓存过期时间（默认5分钟）
- */
-const CACHE_EXPIRE_TIME = 5 * 60 * 1000;
-
-/**
- * 检查缓存是否有效
- */
-function isCacheValid(): boolean {
-    const lastUpdate = localStorage.getItem(CACHE_KEYS.LAST_UPDATE);
-    if (!lastUpdate) return false;
-
-    const now = Date.now();
-    const lastUpdateTime = parseInt(lastUpdate);
-    return now - lastUpdateTime < CACHE_EXPIRE_TIME;
-}
-
-/**
- * 从缓存加载选项
- */
-function loadFromCache(key: string): ComfyUIOption[] | null {
-    try {
-        const cached = localStorage.getItem(key);
-        if (cached) {
-            return JSON.parse(cached);
-        }
-    } catch (error) {
-        log.warn(`Failed to load cache for ${key}:`, error);
-    }
-    return null;
-}
-
-/**
- * 保存选项到缓存
- */
-function saveToCache(key: string, data: ComfyUIOption[]): void {
-    try {
-        localStorage.setItem(key, JSON.stringify(data));
-        localStorage.setItem(CACHE_KEYS.LAST_UPDATE, Date.now().toString());
-    } catch (error) {
-        log.warn(`Failed to save cache for ${key}:`, error);
-    }
-}
-
-/**
- * 并行加载所有ComfyUI选项（带缓存）
+ * 并行加载所有ComfyUI选项（带 LRU 缓存）
  */
 export async function loadAllComfyOptions(settings: ComfyUISettings) {
-    // 如果缓存有效，优先使用缓存
-    if (isCacheValid()) {
-        const cachedModels = loadFromCache(CACHE_KEYS.MODELS);
-        const cachedSamplers = loadFromCache(CACHE_KEYS.SAMPLERS);
-        const cachedSchedulers = loadFromCache(CACHE_KEYS.SCHEDULERS);
-        const cachedVaes = loadFromCache(CACHE_KEYS.VAES);
+    const cacheKey = `all_options_${settings.comfyUrl}`;
 
-        // 如果所有缓存都存在，直接返回
-        if (cachedModels && cachedSamplers && cachedSchedulers && cachedVaes) {
-            log.info('Loaded ComfyUI options from cache');
-            return {
-                models: cachedModels,
-                samplers: cachedSamplers,
-                schedulers: cachedSchedulers,
-                vaes: cachedVaes,
-            };
-        }
+    // 检查缓存
+    const cached = optionsCache.get(cacheKey);
+    if (cached) {
+        logger.info('从 LRU 缓存加载 ComfyUI 选项');
+        // 缓存的是完整对象，需要解构
+        const cachedData = cached as unknown as {
+            models: ComfyUIOption[];
+            samplers: ComfyUIOption[];
+            schedulers: ComfyUIOption[];
+            vaes: ComfyUIOption[];
+        };
+        return cachedData;
     }
 
-    log.info('Loading ComfyUI options from API');
+    logger.info('从 API 加载 ComfyUI 选项');
 
-    // 缓存无效或不存在，重新请求API
+    // 并行加载所有选项
     const [models, samplers, schedulers, vaes] = await Promise.all([
         loadComfyModels(settings),
         loadComfySamplers(settings),
@@ -205,29 +147,23 @@ export async function loadAllComfyOptions(settings: ComfyUISettings) {
         loadComfyVaes(settings),
     ]);
 
-    // 保存到缓存
-    if (models.length > 0) saveToCache(CACHE_KEYS.MODELS, models);
-    if (samplers.length > 0) saveToCache(CACHE_KEYS.SAMPLERS, samplers);
-    if (schedulers.length > 0) saveToCache(CACHE_KEYS.SCHEDULERS, schedulers);
-    if (vaes.length > 0) saveToCache(CACHE_KEYS.VAES, vaes);
+    const result = { models, samplers, schedulers, vaes };
 
-    return { models, samplers, schedulers, vaes };
+    // 保存到 LRU 缓存
+    if (models.length > 0 || samplers.length > 0 || schedulers.length > 0 || vaes.length > 0) {
+        optionsCache.set(cacheKey, result as unknown as ComfyUIOption[]);
+        logger.debug('ComfyUI 选项已缓存');
+    }
+
+    return result;
 }
 
 /**
  * 清除选项缓存
  */
 export function clearOptionsCache(): void {
-    try {
-        localStorage.removeItem(CACHE_KEYS.MODELS);
-        localStorage.removeItem(CACHE_KEYS.SAMPLERS);
-        localStorage.removeItem(CACHE_KEYS.SCHEDULERS);
-        localStorage.removeItem(CACHE_KEYS.VAES);
-        localStorage.removeItem(CACHE_KEYS.LAST_UPDATE);
-        log.info('Options cache cleared');
-    } catch (error) {
-        log.warn('Failed to clear cache:', error);
-    }
+    optionsCache.clear();
+    logger.info('LRU 缓存已清除');
 }
 
 /**
